@@ -1,18 +1,26 @@
 [
   {
+    "appCtx" : {
+      "preferredLayout" : "U.S."
+    },
     "id" : 1,
+    "preferredLayout" : "U.S.",
     "linkedTo" : {
-      "id" : 32295,
       "title" : "init.lua",
+      "id" : 4068,
       "bundleID" : "com.microsoft.VSCode"
     }
   },
   {
+    "appCtx" : {
+      "preferredLayout" : "U.S."
+    },
     "id" : 2,
+    "preferredLayout" : "U.S.",
     "linkedTo" : {
-      "id" : 33980,
-      "title" : "Texty",
-      "bundleID" : "com.tunabelly.androidsms"
+      "title" : "iterm snapshot - Google Search",
+      "id" : 96,
+      "bundleID" : "org.mozilla.firefox"
     }
   }
 ]

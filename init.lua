@@ -9,8 +9,10 @@ local touchdevices = require "hs._asm.undocumented.touchdevice.watcher"
 hs.window.animationDuration = 0.0
 hs.application.enableSpotlightForNameSearches(true)
 
-local function dump(info)
-    hs.console.printStyledtext(hs.inspect.inspect(info))
+function _(...)
+    for i, v in ipairs({...}) do
+        hs.console.printStyledtext(hs.inspect.inspect(v))
+    end
 end
 
 local function inspect(info)
@@ -70,7 +72,7 @@ hs.loadSpoon('SpoonInstall', true)
 local filler = hs.canvas.new({ x = 0, y = 0, w = 125, h = 100 }):appendElements({
     type = "rectangle",
     action = "fill",
-    fillColor = { white = 0.1, alpha = 0.0 },
+    fillColor = { white = 0.1, alpha = 0.3 },
     frame = { x = "0%", y = "0%", h = "100%", w = "100%" },
 }):imageFromCanvas()
 
@@ -150,7 +152,7 @@ local function lockpad()
             imageAlignment = 'left',
             imageAlpha = 0.7,
             padding = self.frame.h * 0.05,
-            frame = { x = "30%", y = "20%", h = "60%", w = "40%" },
+            frame = { x = "20%", y = "30%", h = "40%", w = "40%" },
         }):canvasMouseEvents(
             true, true, true, true
         ):draggingCallback(function(canvas, event, obj)
@@ -205,14 +207,12 @@ local function lockpad()
         end
         if eventType == 'mouseEnter' then
             self.canvas:elementAttribute(1, 'imageAlpha', 1)
-            
+            self.parent:onLockAreaMouseEnter()
             return
         end
         if eventType == 'mouseExit' then
             self.canvas:elementAttribute(1, 'imageAlpha', 0.7)
-            self.parent.canvas[2] = nil
-            self.canvas:hide()
-            self.parent:activate()
+            self.parent:onLockAreaMouseExit()
             return
         end
     end
@@ -225,7 +225,11 @@ local function preview(grp)
     self.__index = self
     self.dNdContext = {}
     self.id = grp:next()
+
     self.lockpad = lockpad()
+    self.appCtx = {
+        preferredLayout = nil
+    }
 
 
     function self:init(frame)
@@ -237,14 +241,17 @@ local function preview(grp)
             imageAlignment = 'left',
             imageAlpha = 1.0,
             padding = self.frame.h * 0.05,
+        }, {
+            type = 'canvas',
+            canvas = self.lockpad.canvas,
         }):canvasMouseEvents(
             true, true, true, true
         ):draggingCallback(function(canvas, event, obj)
-            self:ondnd(canvas, event, obj)
+            return self:ondnd(canvas, event, obj)
         end):level(
             hs.canvas.windowLevels.floating
         ):mouseCallback(function(canvas, eventType, elementId, x, y)
-            self:onMouse(canvas, eventType, elementId, x, y)
+            return self:onMouse(canvas, eventType, elementId, x, y)
         end):wantsLayer(
             true
         ):behaviorAsLabels({ 
@@ -261,12 +268,24 @@ local function preview(grp)
 
     function self:ondnd(canvas, event, obj)
         if event == 'enter' then
-            local ctx = {}
+            local content = hs.pasteboard.readURL(obj.pasteboard)
+            dump(content)
+            if not content.filePath then return false end
+            local appInfo = hs.application.infoForBundlePath(content.filePath)
+            if not appInfo then return false end
+            local ctx = {
+                app = appInfo
+            }
             self.dNdContext[obj.sequence] = ctx
+            return true
         elseif event == 'exit' then
-            local ctx = self.dNdContext[obj.sequence]
             self.dNdContext[obj.sequence] = nil
         else
+            local ctx = self.dNdContext[obj.sequence]
+            dump(ctx)
+            local bundleID = ctx.app.CFBundleIdentifier
+            self:clear()
+            self:restore(bundleID, {})
         end
     end
 
@@ -287,29 +306,59 @@ local function preview(grp)
             if self.bundleID == nil then
                 return
             end
-            self.canvas:elementAttribute(1, 'imageAlpha', 0.7)
-            self.mouseEnterTimer = hs.timer.doAfter(2, function()
-                self.lockpad.canvas:show()
-                self.canvas[2] = {
-                    type = 'canvas',
-                    canvas = self.lockpad.canvas,
-                    frame = { x = "30%", y = "20%", h = "60%", w = "40%" },
-                }
-            end)
+            self.mouseEnterTracker = hs.timer.doEvery(0.05, function()
+                if hs.eventtap.checkKeyboardModifiers().alt then
+                    self:onLockAreaActivated()
+                end
+            end):start()
             return
         end
         if eventType == 'mouseExit' then
-            self.canvas:elementAttribute(1, 'imageAlpha', 1)
-            if self.mouseEnterTimer then
-                self.mouseEnterTimer:stop()
+            if self.mouseEnterTracker then
+                self.mouseEnterTracker:stop()
             end
             return
         end
     end
 
+    function self:onLockAreaActivated()
+        self.mouseEnterTracker:stop()
+        self.lockpad.canvas:show()
+        self.mouseExitTracker = hs.timer.doEvery(0.05, function()
+            if not hs.eventtap.checkKeyboardModifiers().alt then
+                self:onLockAreaDeactivated()
+            end
+        end):start()
+
+    end
+
+    function self:onLockAreaDeactivated()
+        self.mouseExitTracker:stop()
+        self.lockpad.canvas:hide()
+        if self.mouseEnterTracker then
+            self.mouseEnterTracker:stop()
+        end
+    end
+
+    function self:onLockAreaMouseEnter()
+        self.canvas:elementAttribute(1, 'imageAlpha', 0.7)
+        if self.onLockAreaCountdown ~= nil then
+            self.onLockAreaCountdown:stop()
+        end
+    end
+
+    function self:onLockAreaMouseExit()
+        self.canvas:elementAttribute(1, 'imageAlpha', 1)
+        self:onLockAreaDeactivated()
+    end
+
     function self:join(w)
         if self.lockpad.locked and not w:application():bundleID() == self.bundleID then
             return nil, 'locked'
+        end
+
+        if w and self.window and self.window:id() == w:id() then
+            return nil, 'same'
         end
 
         if self.window ~= nil then
@@ -336,23 +385,35 @@ local function preview(grp)
             end,
             true
         ):subscribe(
-            { hs.window.filter.windowDestroyed },
+            { hs.window.filter.windowRejected },
             function(_w, appName, event)
                 self:clear()
             end,
             true
         )
 
-        hs.fs.mkdir(hs.configdir .. '/cache')
-        local snapshotFile = hs.configdir .. '/cache/' .. self.window:application():bundleID() .. '.png'
+        self.appCtx.preferredLayout = self.appCtx.preferredLayout or hs.keycodes.layouts()[1]
 
-        local oldSnapshot = hs.image.imageFromPath(snapshotFile)
-        if oldSnapshot then
-            self.canvas:elementAttribute(1, 'image', oldSnapshot)
+        self.snapshotter = hs.timer.delayed.new(hs.math.randomFloat()*0.2 + 1.0, function()
+            self.snapshotter:start()
+            self:snapshot()
+        end):start()
+
+        grp:onLink(self)
+        self.canvas:show(1)
+        return self
+    end
+
+    function self:dummySnapshot()
+        hs.fs.mkdir(hs.configdir .. '/cache')
+        self.snapshotFile = hs.configdir .. '/cache/' .. self.bundleID or self.window:application():bundleID() .. '.png'
+        self.oldSnapshot = hs.image.imageFromPath(self.snapshotFile)
+        if self.oldSnapshot then
+            self.canvas:elementAttribute(1, 'image', self.oldSnapshot)
         else
             local tmpImg = hs.canvas.new(self.canvas:frame()):appendElements({
                 type = 'image',
-                image = hs.image.imageFromAppBundle(w:application():bundleID()),
+                image = hs.image.imageFromAppBundle(self.bundleID or self.window:application():bundleID()),
                 imageAlignment = 'left',
                 imageAlpha = 1,
                 padding = self.frame.h * 0.05,
@@ -370,18 +431,6 @@ local function preview(grp)
             self.canvas:elementAttribute(1, 'image', tmpImg)
         end
 
-        self.snapshotter = hs.timer.doEvery(1, function()
-            local snapshot = self.window:snapshot()
-            if snapshot == nil then return end
-            self.canvas:elementAttribute(1, 'image', snapshot)
-            if not oldSnapshot then
-                snapshot:setSize({ h = 768, w = 1024 }):saveToFile(snapshotFile)
-            end
-
-        end)
-
-        grp:onLink(self)
-        return self
     end
 
     function self:clear()
@@ -389,30 +438,61 @@ local function preview(grp)
             return nil, 'locked'
         end
 
-        self.filter:unsubscribeAll()
-        self.filter = nil
+        if self.filter then
+            self.filter:unsubscribeAll()
+            self.filter = nil
+        end
         self.window = nil
         self.bundleID = nil
         self.focused = false
-        self.snapshotter:stop()
+        if self.snapshotter then
+            self.snapshotter:stop()
+        end
         self.canvas:elementAttribute(1, 'image', filler)
         self.canvas:elementAttribute(1, 'imageAlignment', 'left')
+        self.appCtx = {
+            preferredLayout = nil
+        }
 
         grp:onClear(self)
         return self
     end
+
+    function self:snapshot()
+        if self.window == nil then
+            return
+        end
+        local snapshot = self.window:snapshot()
+        if snapshot == nil then return end
+        if hs.window.focusedWindow() and hs.window.focusedWindow():id() == self.window:id() then
+            self.appCtx.preferredLayout = hs.keycodes.currentLayout()
+        end
+        self.canvas:elementAttribute(1, 'image', snapshot)
+        if not self.oldSnapshot and self.snapshotFile then
+            snapshot:setSize({ h = 768, w = 1024 }):saveToFile(self.snapshotFile)
+            self.oldSnapshot = true
+        end
+
+        collectgarbage('step')
+        return snapshot
+    end
+
 
     function self:linkedTo()
         return self.window
     end
 
     function self:focus(status)
-        self.focused = status or self.lockpad.locked
-        if self.focused then
+        self.focused = status
+        if self.focused or self.lockpad.locked then
             self.canvas:elementAttribute(1, 'imageAlignment', 'right')
-            grp:onFocus(self)
-        else
+        end
+        if not self.focused and not self.lockpad.locked then
             self.canvas:elementAttribute(1, 'imageAlignment', 'left')
+        end
+        if self.focused then
+            hs.keycodes.setLayout(self.appCtx.preferredLayout or hs.keycodes.layouts()[1])
+            grp:onFocus(self)
         end
 
         return self
@@ -456,14 +536,21 @@ local function preview(grp)
                 id = self.window:id(),
                 title = self.window:title(),
                 bundleID = self.window:application():bundleID()
-            }
+            },
+            appCtx = self.appCtx,
+            preferredLayout = self.appCtx.preferredLayout,
         }
     end
 
-    function self:restore(bundleID)
+    function self:restore(bundleID, appCtx)
         self.lockpad:lock()
         self.bundleID = bundleID
+        self:dummySnapshot()
         self:activate()
+        if appCtx == nil then appCtx = self.appCtx end
+        self.appCtx = appCtx
+        self.appCtx.preferredLayout = self.appCtx.preferredLayout or hs.keycodes.layouts()[1]
+
     end
 
 
@@ -472,6 +559,7 @@ end
 
 local function previewGroup()
     local self = {}
+
     self.__index = self
     self.__items = 0
     self.__registered = {}
@@ -479,8 +567,12 @@ local function previewGroup()
     self.__focus = {}
     self.__alttab = nil
     self.__recoverState = {}
-    self.__alttabTimer = hs.timer.delayed.new(5, function()
-        self.__alttab = nil
+    self.__alttabTimer = hs.timer.delayed.new(0.1, function()
+        if not hs.eventtap.event:getFlags().alt then
+            self.__alttab = nil
+        else
+            self.__alttabTimer:start()
+        end
     end)
 
     function self:next()
@@ -500,41 +592,32 @@ local function previewGroup()
         }):level(hs.canvas.windowLevels.desktopIcon)
         self.hidden = true
         self.__events = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, function(e)
-            if e:getKeyCode() == hs.keycodes.map['w'] and e:getFlags()['alt'] then
+            if e:getKeyCode() == 12 and e:getFlags()['alt'] then
                 self.__current_focus:linkedTo():application():hide()
                 return true
             end
-            if e:getKeyCode() == hs.keycodes.map['q'] and e:getFlags()['alt'] then
+            if e:getKeyCode() == 13 and e:getFlags()['alt'] then
                 local app = self.__current_focus:linkedTo():application()
                 app:hide()
                 return true
             end
-            if e:getKeyCode() == hs.keycodes.map['o'] and e:getFlags()['alt'] then
+            if e:getKeyCode() == 31 and e:getFlags()['alt'] then
                 hs.application.open("Alfred 4")
                 return true
             end
-            if e:getKeyCode() == hs.keycodes.map['tab'] and e:getFlags()['alt'] then
+            if e:getKeyCode() == 48 and e:getFlags()['alt'] then
                 if self.__alttab == nil then
-                    self.__alttab = {}
-                    if self.__current_focus and self.__current_focus:linkedTo() then
-                        table.insert(self.__alttab, self.__current_focus)
-                    end
-                    if self.__history[self.__current_focus] and self.__history[self.__current_focus]:linkedTo() then
-                        table.insert(self.__alttab, self.__history[self.__current_focus])
-                    end
-                    for _, v in pairs(self.__registered) do
-                        if not hs.fnutils.contains(self.__alttab, v) and v:linkedTo() then
-                            table.insert(self.__alttab, v)
-                        end
-                    end
-                    table.insert(self.__alttab, table.remove(self.__alttab, 1))
+                    self.__alttab = {
+                        index = -1
+                    }
+                else
+                    self.__alttab.index = self.__alttab.index + 1
                 end
-                self.__alttabTimer:start()
-                local next = table.remove(self.__alttab, 1)
-                if next and next:linkedTo() then
-                    next:linkedTo():focus()
-                    table.insert(self.__alttab, next)
-                end
+                if self.__alttab.index < 1 then self:back() end
+                local activePreviews = hs.fnutils.filter(self.__registered, function (v)
+                    return v:linkedTo() ~= nil
+                end)
+                activePreviews[self.__alttab.index % #activePreviews + 1]:activate()
                 return true
             end
         end)
@@ -542,7 +625,8 @@ local function previewGroup()
         if state then
             for _, v in ipairs(state) do
                 self.__recoverState[v.id] = function(preview)
-                    preview:restore(v.linkedTo.bundleID)
+                    local ctx = {}
+                    preview:restore(v.linkedTo.bundleID, hs.fnutils.copy(v.appCtx))
                 end
             end
         end
@@ -586,7 +670,7 @@ local function previewGroup()
     function self:hide()
         self.bg:hide()
         for _, p in ipairs(self.__registered) do
-            p:show()
+            p:hide()
         end
         self.hidden = true
         return self
@@ -603,10 +687,14 @@ local function previewGroup()
             self.__history[preview] = self.__current_focus
         end
         self.__current_focus = preview
+
         return self
     end 
 
     function self:onClear(preview)
+        hs.timer.doAfter(0.2,  function ()
+            self:compact()
+        end)
         return self
     end
 
@@ -635,7 +723,7 @@ local function previewGroup()
 
         local toDistribute = hs.fnutils.filter(targetState, function(p)
             local recepient = hs.fnutils.find(self.__registered, function(r)
-                return r.bundleID == p:application():bundleID()
+                return p and p:application() and r.bundleID == p:application():bundleID()
             end)
             if recepient then
                 recepient:join(p)
@@ -665,6 +753,23 @@ local function previewGroup()
             end
         end
     end
+
+    function self:compact()
+        local emptyList = hs.fnutils.filter(self.__registered, function(p)
+            return p:linkedTo() == nil and not p.lockpad.locked
+        end)
+        for i = #self.__registered,1,-1 do
+            local p = self.__registered[i]
+            local relocatable = p:linkedTo() ~= nil and not p.lockpad.locked
+            local applicable = #emptyList > 0 and emptyList[1].id < i
+            if relocatable and applicable then
+                local nextToJoin = table.remove(emptyList, 1)
+                nextToJoin:join(p:linkedTo())
+                p:clear()
+            end
+        end
+    end
+
     return self
 end
 
@@ -673,21 +778,22 @@ function renderer()
     local frame = hs.screen.mainScreen():fullFrame()
     local log = hs.logger.new('alttaber.renderer', 'info')
 
-    local capacity = { 1, 2, 3, 4, 5, 6}
+    local capacity = { 1, 2, 3, 4, 5, 6, 7, 8}
     local height = 0.95 / #capacity
+    local dockSize = 0
     local previewRect = hs.fnutils.map(capacity, function(i)
         return hs.geometry.new({
-            x = 0,
+            x = dockSize,
             y = (0.05 + height * (i - 1)) * frame.h,
             h = height * frame.h,
-            w = 0.15 * frame.w,
+            w = 0.15 * frame.w-dockSize,
         }):floor()
     end)
     local systemRect = hs.geometry.new({
-        x = 0,
+        x = dockSize,
         y = 0,
         h = 1 * frame.h,
-        w = 0.15 * frame.w,
+        w = 0.15 * frame.w - dockSize,
     }):floor()
 
     local filter = hs.window.filter.new(
@@ -702,6 +808,7 @@ function renderer()
 
     local fgrid = {
         { gridFilter, 'mov all foc [15,0,100,100] 0,0' },
+
     }
     local layout = hs.window.layout.new(fgrid, 'alttaber.renderer', 'info')
 
@@ -732,6 +839,8 @@ function renderer()
 
 
     return {
+        previewGroup = bg,
+
         start = function()
             log.d('starting')
             layout:start()
@@ -752,15 +861,10 @@ function renderer()
     }
 end
 
--- local ctrl = manager()
--- ctrl.start()
--- hs.hotkey.bind('alt', 'tab', ctrl.back, nil, nil)
--- hs.hotkey.bind('alt', 'return', ctrl.lock, nil, nil)
-hs.hotkey.bind({'cmd', 'alt'}, 'r', function ()
+hs.menuIcon(true)
+hs.hotkey.bind({ 'cmd', 'alt' }, 'r', function()
     hs.reload()
 end, nil, nil)
-
-hs.menuIcon(true)
 
 local ctrl = renderer()
 ctrl.start()
