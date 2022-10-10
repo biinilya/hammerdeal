@@ -567,13 +567,6 @@ local function previewGroup()
     self.__focus = {}
     self.__alttab = nil
     self.__recoverState = {}
-    self.__alttabTimer = hs.timer.delayed.new(0.1, function()
-        if not hs.eventtap.event:getFlags().alt then
-            self.__alttab = nil
-        else
-            self.__alttabTimer:start()
-        end
-    end)
 
     function self:next()
         self.__items = self.__items + 1
@@ -591,7 +584,7 @@ local function previewGroup()
             compositeRule = 'plusDarker',
         }):level(hs.canvas.windowLevels.desktopIcon)
         self.hidden = true
-        self.__events = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, function(e)
+        self.__events = hs.eventtap.new({ hs.eventtap.event.types.keyDown, hs.eventtap.event.types.flagsChanged }, function(e)
             if e:getKeyCode() == 12 and e:getFlags()['alt'] then
                 self.__current_focus:linkedTo():application():hide()
                 return true
@@ -608,18 +601,26 @@ local function previewGroup()
             if e:getKeyCode() == 48 and e:getFlags()['alt'] then
                 if self.__alttab == nil then
                     self.__alttab = {
-                        index = -1
+                        index = -2
                     }
-                else
-                    self.__alttab.index = self.__alttab.index + 1
                 end
-                if self.__alttab.index < 1 then self:back() end
-                local activePreviews = hs.fnutils.filter(self.__registered, function (v)
-                    return v:linkedTo() ~= nil
-                end)
-                activePreviews[self.__alttab.index % #activePreviews + 1]:activate()
+                for i=1,#self.__registered do
+                    self.__alttab.index = self.__alttab.index + 1
+                    if self.__alttab.index < 1 then
+                        if self:back(self.__alttab.index + 2)then
+                            return true
+                        end
+                    else
+                        local activePreviews = hs.fnutils.filter(self.__registered, function(v)
+                            return v:linkedTo() ~= nil
+                        end)
+                        activePreviews[self.__alttab.index % #activePreviews + 1]:activate()
+                        return true
+                    end
+                end
                 return true
             end
+            self.__alttab = nil
         end)
         local state = hs.json.read(hs.configdir .. '/preview.json')
         if state then
@@ -683,13 +684,16 @@ local function previewGroup()
 
     function self:onFocus(preview)
         self:dump()
-        if self.__current_focus then
-            self.__history[preview] = self.__current_focus
+        if self.__current_focus and self.__current_focus ~= preview then
+            table.insert(self.__history, 1, self.__current_focus)
         end
         self.__current_focus = preview
+        if #self.__history > 20 then
+            table.remove(self.__history, #self.__history)
+        end
 
         return self
-    end 
+    end
 
     function self:onClear(preview)
         hs.timer.doAfter(0.2,  function ()
@@ -702,14 +706,19 @@ local function previewGroup()
         return self
     end
 
-    function self:back()
-        if self.__current_focus == nil then return end
-
-        local __past_focus = self.__history[self.__current_focus]
-        if __past_focus and __past_focus:linkedTo() ~= nil then
-            __past_focus:linkedTo():focus()
+    function self:back(offset)
+        if offset == nil then
+            offset = 1
         end
-        return self
+        if #self.__history < offset then
+            return false
+        end
+        if self.__history[offset] == self.__current_focus then
+            return false
+        end
+
+        self.__history[offset]:activate()
+        return true
     end
 
     function self:dump()

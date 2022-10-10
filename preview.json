@@ -6,21 +6,9 @@
     "id" : 1,
     "preferredLayout" : "U.S.",
     "linkedTo" : {
-      "title" : "init.lua",
       "id" : 4068,
-      "bundleID" : "com.microsoft.VSCode"
-    }
-  },
-  {
-    "appCtx" : {
-      "preferredLayout" : "U.S."
-    },
-    "id" : 2,
-    "preferredLayout" : "U.S.",
-    "linkedTo" : {
-      "title" : "iterm snapshot - Google Search",
-      "id" : 96,
-      "bundleID" : "org.mozilla.firefox"
+      "bundleID" : "com.microsoft.VSCode",
+      "title" : "init.lua"
     }
   }
 ]
