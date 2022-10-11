@@ -4,6 +4,8 @@ local eventtap = require "hs.eventtap"
 local canvas   = require "hs.canvas"
 local touchdevice = require "hs._asm.undocumented.touchdevice"
 local touchdevices = require "hs._asm.undocumented.touchdevice.watcher"
+local axuielement  = require "hs.axuielement"
+local uielement = require "hs.uielement"
 
 
 hs.window.animationDuration = 0.0
@@ -391,6 +393,14 @@ local function preview(grp)
             end,
             true
         )
+        self.focusedElement = nil
+        self.focusGuard = hs.axuielement.observer.new(w:application():pid()):start()
+        self.focusGuard:callback(function(element, event)
+            if event == 'focusedUIElementChanged' then
+                self.focusedElement = element
+                self.appCtx.focusedElement = element:path()
+            end
+        end)
 
         self.appCtx.preferredLayout = self.appCtx.preferredLayout or hs.keycodes.layouts()[1]
 
@@ -434,8 +444,9 @@ local function preview(grp)
     end
 
     function self:clear()
+        local state
         if self.lockpad.locked then
-            return nil, 'locked'
+            state = self:dump()
         end
 
         if self.filter then
@@ -448,13 +459,19 @@ local function preview(grp)
         if self.snapshotter then
             self.snapshotter:stop()
         end
+        self.focusGuard:stop()
         self.canvas:elementAttribute(1, 'image', filler)
         self.canvas:elementAttribute(1, 'imageAlignment', 'left')
         self.appCtx = {
             preferredLayout = nil
         }
 
-        grp:onClear(self)
+        if state ~= nil then
+            self:restore(state.linkedTo.bundleID, state.appCtx)
+        else
+            self.canvas:elementAttribute(1, 'image', filler)
+            grp:onClear(self)
+        end
         return self
     end
 
@@ -522,6 +539,10 @@ local function preview(grp)
         end
         if self.window and hs.window.find(self.window:id()) then
             self.window:focus()
+            if self.focusedElement then
+                self.focusedElement:setAttributeValue("AXFocused", true)
+            end
+
         else
             hs.application.open(self.bundleID)
         end
@@ -535,7 +556,7 @@ local function preview(grp)
             linkedTo = {
                 id = self.window:id(),
                 title = self.window:title(),
-                bundleID = self.window:application():bundleID()
+                bundleID = self.bundleID or self.window:application():bundleID()
             },
             appCtx = self.appCtx,
             preferredLayout = self.appCtx.preferredLayout,
@@ -550,7 +571,16 @@ local function preview(grp)
         if appCtx == nil then appCtx = self.appCtx end
         self.appCtx = appCtx
         self.appCtx.preferredLayout = self.appCtx.preferredLayout or hs.keycodes.layouts()[1]
+    end
 
+    function self:swap(other)
+        self.id, other.id = other.id, self.id
+        local localFrame = hs.geometry.copy(self.canvas:frame())
+        local otherFrame = hs.geometry.copy(other.canvas:frame())
+        self.canvas:frame(otherFrame)
+        self.lockpad.canvas:frame(self.canvas:frame())
+        other.canvas:frame(localFrame)
+        other.lockpad.canvas:frame(other.canvas:frame())
     end
 
 
@@ -692,13 +722,14 @@ local function previewGroup()
             table.remove(self.__history, #self.__history)
         end
 
+        hs.timer.doAfter(0.2, function()
+            self:compact()
+        end)
+
         return self
     end
 
     function self:onClear(preview)
-        hs.timer.doAfter(0.2,  function ()
-            self:compact()
-        end)
         return self
     end
 
@@ -761,9 +792,26 @@ local function previewGroup()
                 p:join(v)
             end
         end
+        
+        self:compact()
     end
 
     function self:compact()
+        local nonLocked = hs.fnutils.filter(self.__registered, function(p)
+            return not p.lockpad.locked
+        end)
+        for i = #self.__registered, 1, -1 do
+            local p = self.__registered[i]
+            local relocatable = p.lockpad.locked
+            local applicable = #nonLocked > 0 and nonLocked[1].id < i
+            if relocatable and applicable then
+                local nextToJoin = table.remove(nonLocked, 1)
+                self.__registered[i] = nextToJoin
+                self.__registered[nextToJoin.id] = p
+                p:swap(nextToJoin)
+            end
+        end
+
         local emptyList = hs.fnutils.filter(self.__registered, function(p)
             return p:linkedTo() == nil and not p.lockpad.locked
         end)
