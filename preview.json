@@ -7,20 +7,20 @@
     "preferredLayout" : "U.S.",
     "linkedTo" : {
       "title" : "init.lua",
-      "bundleID" : "com.microsoft.VSCode",
-      "id" : 4068
+      "id" : 4068,
+      "bundleID" : "com.microsoft.VSCode"
     }
   },
   {
     "appCtx" : {
-      "preferredLayout" : "U.S."
+      "preferredLayout" : "Russian"
     },
     "id" : 2,
-    "preferredLayout" : "U.S.",
+    "preferredLayout" : "Russian",
     "linkedTo" : {
       "title" : "Texty",
-      "bundleID" : "com.tunabelly.androidsms",
-      "id" : 9903
+      "id" : 9903,
+      "bundleID" : "com.tunabelly.androidsms"
     }
   },
   {
@@ -31,8 +31,8 @@
     "preferredLayout" : "U.S.",
     "linkedTo" : {
       "title" : "__main__.py – holywall\/.envrc [holywall]",
-      "bundleID" : "com.jetbrains.intellij",
-      "id" : 6914
+      "id" : 6914,
+      "bundleID" : "com.jetbrains.intellij"
     }
   },
   {
@@ -43,20 +43,8 @@
     "preferredLayout" : "U.S.",
     "linkedTo" : {
       "title" : "Итоги недели мобилизации. Уклониться нельзя судить. Указа не будет. Приглашаем редактировать наше письмо Мишустину \/ Habr",
-      "bundleID" : "org.mozilla.firefox",
-      "id" : 9861
-    }
-  },
-  {
-    "appCtx" : {
-      "preferredLayout" : "U.S."
-    },
-    "id" : 5,
-    "preferredLayout" : "U.S.",
-    "linkedTo" : {
-      "title" : "hammerspoon\/observer.m at master · Hammerspoon\/hammerspoon · GitHub",
-      "bundleID" : "com.kapeli.dashdoc",
-      "id" : 47
+      "id" : 9861,
+      "bundleID" : "org.mozilla.firefox"
     }
   }
 ]

@@ -139,7 +139,9 @@ local function sortByTitle(windows)
 end
 
 local function lockpad()
+    ---@class lockpad
     local self = {}
+
     self.__index = self
     self.locked = false
     self.parent = nil
@@ -223,12 +225,24 @@ local function lockpad()
 end
 
 local function preview(grp)
+    ---@class preview
     local self = {}
     self.__index = self
     self.dNdContext = {}
     self.id = grp:next()
 
+    ---@type hs.window
+    self.window = nil
+
+    ---@type hs.canvas
+    self.canvas = nil
+
+    ---@type lockpad
     self.lockpad = lockpad()
+
+    ---@type hs.axuielement.observer
+    self.focusGuard = nil
+  
     self.appCtx = {
         preferredLayout = nil
     }
@@ -378,6 +392,11 @@ local function preview(grp)
             function(_w, appName, event)
                 self.window = _w
                 self:focus(true)
+                if self.focusGuard then
+                    self.focusGuard:addWatcher(hs.axuielement.windowElement(_w),
+                        hs.axuielement.observer.notifications.focusedUIElementChanged
+                    )
+                end
             end,
             true
         ):subscribe(
@@ -395,12 +414,15 @@ local function preview(grp)
         )
         self.focusedElement = nil
         self.focusGuard = hs.axuielement.observer.new(w:application():pid()):start()
-        self.focusGuard:callback(function(element, event)
-            if event == 'focusedUIElementChanged' then
+        self.focusGuard:callback(function(observer, element, event)
+            print(event)
+            if event == hs.axuielement.observer.notifications.focusedUIElementChanged then
                 self.focusedElement = element
-                self.appCtx.focusedElement = element:path()
+                self.appCtx.focusedElement = hs.axuielement.path(element)
             end
         end)
+            
+        
 
         self.appCtx.preferredLayout = self.appCtx.preferredLayout or hs.keycodes.layouts()[1]
 
@@ -470,9 +492,10 @@ local function preview(grp)
             self:restore(state.linkedTo.bundleID, state.appCtx)
         else
             self.canvas:elementAttribute(1, 'image', filler)
-            grp:onClear(self)
         end
+        grp:onClear(self)
         return self
+
     end
 
     function self:snapshot()
@@ -588,13 +611,21 @@ local function preview(grp)
 end
 
 local function previewGroup()
+    ---@class PreviewGroup
     local self = {}
 
     self.__index = self
     self.__items = 0
+
+    ---@type preview[]
     self.__registered = {}
+
+    ---@type preview[]
     self.__history = {}
+
+    ---@type preview
     self.__focus = {}
+
     self.__alttab = nil
     self.__recoverState = {}
 
@@ -627,6 +658,13 @@ local function previewGroup()
             if e:getKeyCode() == 31 and e:getFlags()['alt'] then
                 hs.application.open("Alfred 4")
                 return true
+            end
+            for i = 1, #self.__registered do
+                if i == 10 then break end
+                if e:getKeyCode() == hs.keycodes.map[tostring(i)] and e:getFlags()['alt'] then
+                    self.__registered[i]:activate()
+                    return true
+                end
             end
             if e:getKeyCode() == 48 and e:getFlags()['alt'] then
                 if self.__alttab == nil then
@@ -713,7 +751,6 @@ local function previewGroup()
     end
 
     function self:onFocus(preview)
-        self:dump()
         if self.__current_focus and self.__current_focus ~= preview then
             table.insert(self.__history, 1, self.__current_focus)
         end
@@ -730,10 +767,12 @@ local function previewGroup()
     end
 
     function self:onClear(preview)
+        self:compact()
         return self
     end
 
     function self:onLink(preview)
+        self:compact()
         return self
     end
 
