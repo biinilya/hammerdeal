@@ -6,9 +6,9 @@
     "id" : 1,
     "preferredLayout" : "U.S.",
     "linkedTo" : {
-      "title" : "init.lua",
       "id" : 4068,
-      "bundleID" : "com.microsoft.VSCode"
+      "bundleID" : "com.microsoft.VSCode",
+      "title" : "init.lua"
     }
   },
   {
@@ -18,9 +18,9 @@
     "id" : 2,
     "preferredLayout" : "Russian",
     "linkedTo" : {
-      "title" : "Texty",
       "id" : 9903,
-      "bundleID" : "com.tunabelly.androidsms"
+      "bundleID" : "com.tunabelly.androidsms",
+      "title" : "Texty"
     }
   },
   {
@@ -30,9 +30,9 @@
     "id" : 3,
     "preferredLayout" : "U.S.",
     "linkedTo" : {
-      "title" : "__main__.py – holywall\/.envrc [holywall]",
       "id" : 6914,
-      "bundleID" : "com.jetbrains.intellij"
+      "bundleID" : "com.jetbrains.intellij",
+      "title" : "__main__.py – holywall\/.envrc [holywall]"
     }
   },
   {
@@ -42,9 +42,9 @@
     "id" : 4,
     "preferredLayout" : "U.S.",
     "linkedTo" : {
-      "title" : "Итоги недели мобилизации. Уклониться нельзя судить. Указа не будет. Приглашаем редактировать наше письмо Мишустину \/ Habr",
-      "id" : 9861,
-      "bundleID" : "org.mozilla.firefox"
+      "id" : 4501,
+      "bundleID" : "co.zeit.hyper",
+      "title" : "Hyper"
     }
   }
 ]
