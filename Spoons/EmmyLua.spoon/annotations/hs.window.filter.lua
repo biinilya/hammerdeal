@@ -96,7 +96,7 @@ function M.copy(windowfilter, logname, loglevel, ...) end
 --    * to exclude fullscreen windows: `nofs_wf=hs.window.filter.new():setOverrideFilter{fullscreen=false}`
 --    * to include invisible windows: `inv_wf=windowfilter.new():setDefaultFilter{}`
 --  * If you still want to alter the default windowfilter:
---    * you should probably apply your customizations at the top of your `init.lua`, or at any rate before instantiating any other windowfilter; this
+--    * you should probably apply your customizations at the top of your `__init.lua`, or at any rate before instantiating any other windowfilter; this
 --      way copies created via `hs.window.filter.new(nil,...)` will inherit your modifications
 --    * to list the known exclusions: `hs.inspect(hs.window.filter.default:getFilters())` from the console
 --    * to add an exclusion: `hs.window.filter.default:rejectApp'Cool New Launcher'`
@@ -566,7 +566,7 @@ function M:subscribe(event, fn, immediate, ...) end
 --  * Only use this function if "Displays have separate Spaces" and "Automatically rearrange Spaces" are OFF in System Preferences>Mission Control
 --  * Calling this function will set `hs.window.filter.forceRefreshOnSpaceChange` to `false`
 --  * If you defined one or more Spaces-aware windowfilters (i.e. when the `currentSpace` field of a filter is present), windows need refreshing at every space change anyway, so using this callback will not result in improved performance
---  * See `hs.window.filter.forceRefreshOnSpaceChange` for an overview of Spaces limitations in Hammerspoon. If you often (or always) change Space via the "numbered" Mission Control keyboard shortcuts (by default, `ctrl-1` etc.), you can call this function from your `init.lua` when intercepting these shortcuts; for example:
+--  * See `hs.window.filter.forceRefreshOnSpaceChange` for an overview of Spaces limitations in Hammerspoon. If you often (or always) change Space via the "numbered" Mission Control keyboard shortcuts (by default, `ctrl-1` etc.), you can call this function from your `__init.lua` when intercepting these shortcuts; for example:
 --  ```
 --  hs.hotkey.bind('ctrl','1',nil,function()hs.window.filter.switchedToSpace(1)end)
 --  hs.hotkey.bind('ctrl','2',nil,function()hs.window.filter.switchedToSpace(2)end)
@@ -752,4 +752,3 @@ M.windowUnminimized = nil
 -- Event for `hs.window.filter:subscribe()`: a window became "visible" (in *any* Mission Control Space, as per `hs.window:isVisible()`)
 -- after having been hidden or minimized, or if it was just created
 M.windowVisible = nil
-

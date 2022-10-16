@@ -6,9 +6,9 @@
     "id" : 1,
     "preferredLayout" : "U.S.",
     "linkedTo" : {
-      "id" : 4068,
+      "title" : "init.lua",
       "bundleID" : "com.microsoft.VSCode",
-      "title" : "init.lua"
+      "id" : 4068
     }
   },
   {
@@ -18,33 +18,9 @@
     "id" : 2,
     "preferredLayout" : "Russian",
     "linkedTo" : {
-      "id" : 9903,
+      "title" : "Texty",
       "bundleID" : "com.tunabelly.androidsms",
-      "title" : "Texty"
-    }
-  },
-  {
-    "appCtx" : {
-      "preferredLayout" : "U.S."
-    },
-    "id" : 3,
-    "preferredLayout" : "U.S.",
-    "linkedTo" : {
-      "id" : 6914,
-      "bundleID" : "com.jetbrains.intellij",
-      "title" : "__main__.py – holywall\/.envrc [holywall]"
-    }
-  },
-  {
-    "appCtx" : {
-      "preferredLayout" : "U.S."
-    },
-    "id" : 4,
-    "preferredLayout" : "U.S.",
-    "linkedTo" : {
-      "id" : 4501,
-      "bundleID" : "co.zeit.hyper",
-      "title" : "Hyper"
+      "id" : 16775
     }
   }
 ]

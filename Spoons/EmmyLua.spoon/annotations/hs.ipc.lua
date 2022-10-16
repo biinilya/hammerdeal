@@ -3,7 +3,7 @@
 
 -- Provides Hammerspoon with the ability to create both local and remote message ports for inter-process communication.
 --
--- The most common use of this module is to provide support for the command line tool `hs` which can be added to your terminal shell environment with [hs.ipc.cliInstall](#cliInstall).  The command line tool will not work unless the `hs.ipc` module is loaded first, so it is recommended that you add `require("hs.ipc")` to your Hammerspoon `init.lua` file (usually located at ~/.hammerspoon/init.lua) so that it is always available when Hammerspoon is running.
+-- The most common use of this module is to provide support for the command line tool `hs` which can be added to your terminal shell environment with [hs.ipc.cliInstall](#cliInstall).  The command line tool will not work unless the `hs.ipc` module is loaded first, so it is recommended that you add `require("hs.ipc")` to your Hammerspoon `__init.lua` file (usually located at ~/.hammerspoon/__init.lua) so that it is always available when Hammerspoon is running.
 --
 -- This module is based heavily on code from Mjolnir by [Steven Degutis](https://github.com/sdegutis/).
 ---@class hs.ipc
@@ -189,4 +189,3 @@ function M.remotePort(name, ...) end
 --  * status   - a boolean indicathing whether or not the local port responded before the timeout (true) or if an error or timeout occurred waiting for the response (false)
 --  * response - the response from the local port, usually a string, but may be nil if there was no response returned.  If status is false, will contain an error message describing the error.
 function M:sendMessage(data, msgID, waitTimeout, oneWay, ...) end
-

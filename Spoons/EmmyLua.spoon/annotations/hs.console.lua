@@ -224,7 +224,7 @@ function M.outputBackgroundColor(color, ...) end
 --  * None
 --
 -- Notes:
---  * This has been made as close to the Lua `print` command as possible.  You can replace the existing print command with this by adding the following to your `init.lua` file:
+--  * This has been made as close to the Lua `print` command as possible.  You can replace the existing print command with this by adding the following to your `__init.lua` file:
 --
 -- ~~~
 --    print = function(...)
@@ -310,4 +310,3 @@ function M.toolbar(toolbar, ...) end
 -- Notes:
 --  * See the `hs.drawing.color` entry in the Dash documentation, or type `help.hs.drawing.color` in the Hammerspoon console to get more information on how to specify a color.
 function M.windowBackgroundColor(color, ...) end
-

@@ -5,7 +5,7 @@
 --
 -- Separate from this extension, Hammerspoon provides an action for use in the Shortcuts app.
 -- The action is called "Execute Lua" and if it is passed a text block of valid Lua, it will execute that Lua within Hammerspoon.
--- You can use this action to call functions defined in your `init.lua` or to just execute chunks of Lua.
+-- You can use this action to call functions defined in your `__init.lua` or to just execute chunks of Lua.
 --
 -- Your functions/chunks can return text, which will be returned by the action in Shortcuts.
 ---@class hs.shortcuts
@@ -33,4 +33,3 @@ function M.list() end
 -- Returns:
 --  * None
 function M.run(name, ...) end
-

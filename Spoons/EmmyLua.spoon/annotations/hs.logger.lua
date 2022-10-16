@@ -19,7 +19,7 @@ function M:d(...) end
 
 -- Default log level for new logger instances.
 --
--- The starting value is 'warning'; set this (to e.g. 'info') at the top of your `init.lua` to affect
+-- The starting value is 'warning'; set this (to e.g. 'info') at the top of your `__init.lua` to affect
 -- all logger instances created without specifying a `loglevel` parameter
 M.defaultLogLevel = nil
 
@@ -214,4 +214,3 @@ function M:w(...) end
 -- Returns:
 --  * None
 function M:wf(fmt, ...) end
-

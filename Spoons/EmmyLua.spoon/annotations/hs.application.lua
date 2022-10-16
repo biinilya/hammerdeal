@@ -105,7 +105,7 @@ function M.enableSpotlightForNameSearches(state, ...) end
 --  * for convenience you can call this as `hs.application(hint)`
 --  * use this function when you don't know the exact name of an application you're interested in, i.e.
 --    from the console: `hs.application'term' --> hs.application: iTerm2 (0x61000025fb88)  hs.application: Terminal (0x618000447588)`.
---    But be careful when using it in your `init.lua`: `terminal=hs.application'term'` will assign either "Terminal" or "iTerm2" arbitrarily (or even,
+--    But be careful when using it in your `__init.lua`: `terminal=hs.application'term'` will assign either "Terminal" or "iTerm2" arbitrarily (or even,
 --    if neither are running, any other app with a window that happens to have "term" in its title); to make sure you get the right app in your scripts,
 --    use `hs.application.get` with the exact name: `terminal=hs.application.get'Terminal' --> "Terminal" app, or nil if it's not running`
 --
@@ -446,7 +446,7 @@ function M.nameForBundleID(bundleID, ...) end
 --
 -- Notes:
 --  * the `wait` parameter will *block all Hammerspoon activity* in order to return the application object "synchronously"; only use it if you
---    a) have no time-critical event processing happening elsewhere in your `init.lua` and b) need to act on the application object, or on
+--    a) have no time-critical event processing happening elsewhere in your `__init.lua` and b) need to act on the application object, or on
 --    its window(s), right away
 --  * when launching a "windowless" app (background daemon, menulet, etc.) make sure to omit `waitForFirstWindow`
 ---@return hs.application
@@ -542,4 +542,3 @@ function M:unhide() end
 -- Returns:
 --  * A table containing zero or more hs.window objects
 function M:visibleWindows() end
-

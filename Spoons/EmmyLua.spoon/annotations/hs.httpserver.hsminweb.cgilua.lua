@@ -35,7 +35,7 @@ function M.contentheader(maintype, subtype, ...) end
 --
 -- Notes:
 --  * This function only interprets the file if it exists; if the file does not exist, it returns an error to the calling code (not the web client)
---  * During the processing of a web request, the local directory is temporarily changed to match the local directory of the path of the file being served, as determined by the URL of the request.  This is usually different than the Hammerspoon default directory which corresponds to the directory which contains the `init.lua` file for Hammerspoon.
+--  * During the processing of a web request, the local directory is temporarily changed to match the local directory of the path of the file being served, as determined by the URL of the request.  This is usually different than the Hammerspoon default directory which corresponds to the directory which contains the `__init.lua` file for Hammerspoon.
 function M.doif(filename, ...) end
 
 -- Executes a lua file (given by filepath).
@@ -48,7 +48,7 @@ function M.doif(filename, ...) end
 --
 -- Notes:
 --  * If the file does not exist, an Internal Server error is returned to the client and an error is logged to the Hammerspoon console.
---  * During the processing of a web request, the local directory is temporarily changed to match the local directory of the path of the file being served, as determined by the URL of the request.  This is usually different than the Hammerspoon default directory which corresponds to the directory which contains the `init.lua` file for Hammerspoon.
+--  * During the processing of a web request, the local directory is temporarily changed to match the local directory of the path of the file being served, as determined by the URL of the request.  This is usually different than the Hammerspoon default directory which corresponds to the directory which contains the `__init.lua` file for Hammerspoon.
 function M.doscript(filename, ...) end
 
 -- Sends the message to the `hs.httpserver.hsminweb` log, tagged as an error.
@@ -284,4 +284,3 @@ function M.tmpname() end
 -- Notes:
 --  * CGILua supports being invoked through a URL that amounts to set of chained paths and script names; this is not necessary for this module, so these variables may differ somewhat from a true CGILua installation; the intent of the variable has been maintained as closely as I can determine at present.  If this changes, so will this documentation.
 M.urlpath = nil
-

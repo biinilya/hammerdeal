@@ -3,7 +3,7 @@
 
 -- Show a fading-and-zooming image in the center of the screen
 --
--- By default the Hammerspoon logo is shown. Typical use is to show it as an indicator when your configuration finishes loading, by adding the following to the bottom of your `~/.hammerspoon/init.lua` file:
+-- By default the Hammerspoon logo is shown. Typical use is to show it as an indicator when your configuration finishes loading, by adding the following to the bottom of your `~/.hammerspoon/__init.lua` file:
 -- ```
 --   hs.loadSpoon('FadeLogo'):start()
 -- ```
@@ -58,4 +58,3 @@ M.zoom_scale_factor = nil
 
 -- Seconds between the zooming iterations
 M.zoom_scale_timer = nil
-

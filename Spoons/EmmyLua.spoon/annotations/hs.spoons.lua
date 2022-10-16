@@ -63,7 +63,7 @@ function M.list() end
 --      download_url = "https://github.com/Hammerspoon/Spoons/raw/master/Spoons/"..name..".spoon.zip"
 --    }
 --    ```
---  * template: (optional) absolute path of the template to use for the `init.lua` file of the new Spoon. Defaults to the `templates/init.tpl` file included with Hammerspoon.
+--  * template: (optional) absolute path of the template to use for the `__init.lua` file of the new Spoon. Defaults to the `templates/init.tpl` file included with Hammerspoon.
 --
 -- Returns:
 --  * The full directory path where the template was created, or `nil` if there was an error.
@@ -104,4 +104,3 @@ function M.scriptPath(n) end
 -- Returns:
 --  * `true` if the spoon was loaded, `nil` otherwise
 function M.use(name, arg, noerror, ...) end
-
