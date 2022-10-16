@@ -73,7 +73,7 @@ function appMgr:new(views)
         end
         ---@type hs.geometry
         local f, fScreen = w:frame(), hs.screen.mainScreen():fullFrame()
-        if f.w < fScreen.w / 10 or f.h < fScreen.h / 10 or f.w * f.h < fScreen.w * fScreen.h / 20 then
+        if f.w < fScreen.w / 10 or f.h < fScreen.h / 10 or f.w * f.h < fScreen.w * fScreen.h / 8 then
             return false
         end
         ---@type hs.window.filter
