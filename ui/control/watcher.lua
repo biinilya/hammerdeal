@@ -217,15 +217,15 @@ function appMgr:reorder()
                 end
             end)
         end
-        if not lockedView:attachedToWindow() then
-            hs.fnutils.each(self.__evictableViews, function(v)
-                local state = v:attachmentInfo()
+        hs.fnutils.each(self.__evictableViews, function(v)
+            local state = v:attachmentInfo()
+            if not lockedView:attachedToWindow() then
                 if state.toWindow and state.appName == lockedView.__app:name() then
                     v:detach()
                     lockedView:attachTo(state)
                 end
-            end)
-        end
+            end
+        end)
     end
 
     table.sort(self.__availableViews, function(v1, v2) return v1.__id < v2.__id end)
