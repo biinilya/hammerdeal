@@ -11,7 +11,7 @@ hub.log = nil
 function hub:new(tag, loglevel)
     local o = {}
 
-    o.log = hs.logger.new(tag or 'ui.preview.events.hub', loglevel or 'info')
+    o.log = hs.logger.new(tag or 'ui.preview.events.hub', loglevel or 'warning')
     o.cbForMouseEvents = function(canvas, eventType, elementId, x, y)
         o:dispatch(elementId)(eventType, x, y)
     end
@@ -157,10 +157,10 @@ function watcher:idle()
         self.ctx.y = y
         self.ctx.timer = hs.timer.doAfter(self.config.tapTimeout, function()
             self.ctx.status = 'tap'
-            self:hooks().onTap()
+            self:hooks().onTap(self.ctx)
             self.ctx.timer = hs.timer.doAfter(self.config.longTapTimeout, function()
                 self.ctx.status = 'longTap'
-                self:hooks().onLongTap()
+                self:hooks().onLongTap(self.ctx)
             end)
         end)
 
@@ -168,13 +168,14 @@ function watcher:idle()
             self:actionMap().mouseDown = function(_, _) end
             self:actionMap().mouseUp = function(_, _)
                 self.ctx.status = 'click'
-                self:hooks().onClick()
+                self:hooks().onClick(self.ctx)
             end
         end
 
-        self:hooks().onSessionBegin()
+        self:hooks().onSessionBegin(self.ctx)
         self:actionMap().mouseExit = function(_, _)
-            self:hooks().onSessionEnd()
+            self.ctx.timer:stop()
+            self:hooks().onSessionEnd(self.ctx)
         end
     end
 

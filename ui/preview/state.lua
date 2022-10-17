@@ -4,16 +4,6 @@ local _openImg = hs.image.imageFromPath(hs.configdir .. "/unlock.png")
 local _closeImg = hs.image.imageFromPath(hs.configdir .. "/lock.png")
 ---@type hs.image
 
----@type ui.frame
-local workspaceArea = ui.frame:fractions(0.15, 0,0.85, 1.0)
-local _filler = hs.canvas.new(workspaceArea:rect()):appendElements({
-    type = "rectangle",
-    action = "fill",
-    fillColor = { white = 0.1, alpha = 0.5 },
-    frame = { x = "0%", y = "0%", h = "100%", w = "100%" },
-    padding = 0,
-}):imageFromCanvas()
-
 ---@class ui.preview.state
 local state = {}
 state.__index = state
@@ -21,23 +11,27 @@ state.__name = 'state'
 ---@type ui.preview.window
 state.super = nil
 
+---@type ui.frame
+local workspaceArea = require 'ui.frame':fractions(0.15, 0,0.85, 1.0)
+local filler = hs.canvas.new(workspaceArea:rect()):appendElements({
+    type = "rectangle",
+    action = "fill",
+    fillColor = { white = 0.1, alpha = 0.5 },
+    frame = { x = "0%", y = "0%", h = "100%", w = "100%" },
+    padding = 0,
+}):imageFromCanvas()
+
 ---@param super ui.preview.window
----@param windowArea ui.frame
----@param workspaceArea ui.frame
 ---@return ui.preview.state
-function state:new(super, windowArea, workspaceArea)
+function state:new(super)
     local o = {}
     setmetatable(o, self)
 
-    o.windowArea = windowArea
-    o.workspaceArea = workspaceArea
-
     return o
         :super(super)
-        :frame(windowArea)
         :locked(false)
         :highlighted(false)
-        :background(_filler)
+        :background(filler)
         :lockerHighlighted(false)
         :lockerVisible(false)
         :visible(false)
@@ -114,16 +108,6 @@ function state:lockerVisible(f)
     return self._lockerVisible
 end
 
----@param f ui.frame
----@return ui.frame | ui.preview.state
-function state:frame(f)
-    if f ~= nil then
-        self._frame = f
-        return self
-    end
-    return self._frame
-end
-
 ---@param f hs.image
 ---@return hs.image | ui.preview.state
 function state:background(f)
@@ -135,11 +119,11 @@ function state:background(f)
 end
 
 ---@return ui.preview.state
-function state:reset(f)
+function state:reset()
     return self
         :locked(false)
         :highlighted(false)
-        :background(_filler)
+        :background(filler)
         :lockerHighlighted(false)
         :lockerVisible(false)
         :focused(false)
