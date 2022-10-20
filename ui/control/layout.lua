@@ -86,27 +86,36 @@ function layout:detach(id)
 end
 
 function layout:reorder()
-    local locked = {}
-    local ready = {}
-    local preOrdered = {}
-    for _, connection in pairs(self.connections) do
-        if connection.cfg:get('locked') then
-            table.insert(locked, connection)
-        else
-            table.insert(ready, connection)
-        end
+
+    ---@param cfg ui.cfg
+    local function fetureVec(cfg)
+        local fatures = {}
+        if cfg:get('locked') then table.insert(fatures, 1) else table.insert(fatures, 0) end
+        table.insert(fatures, cfg:count('flow', 3600))
+        table.insert(fatures, cfg:count('focused', 600))
+        table.insert(fatures, cfg:count('flow', 24 * 3600))
+        return fatures
     end
 
-    -- table.sort(locked, function(v1, v2)
-    --     return (locked[v1]).cfg:get('locked.date') < v2.cfg:get('locked.date')
-    -- end)
-    -- table.sort(ready)
+    ---@param f1 number[]
+    ---@param f2 number[]
+    local function compare(f1, f2)
+        for i = 1, #f1 do
+            if f1[i] ~= f2[i] then return f1[i] > f2[i] end
+        end
+        return false
+    end
 
+    local preOrdered = {}
+    for _, connection in pairs(self.connections) do
+        table.insert(preOrdered, connection)
+    end
 
-    -- table.sort(locked)
-    hs.fnutils.concat(preOrdered, locked)
-    -- table.sort(ready)
-    hs.fnutils.concat(preOrdered, ready)
+    table.sort(preOrdered, function(v1, v2)
+        local f1 = fetureVec(v1.cfg)
+        local f2 = fetureVec(v2.cfg)
+        return compare(f1, f2)
+    end)
 
     for i, gate in ipairs(self.gates) do
         local linkedTo = preOrdered[i]

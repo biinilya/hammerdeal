@@ -23,12 +23,7 @@ function broker:new()
     obj.__layout = ui.control.layout:new(8)
     obj.__bbcLife = hs.application.watcher.new(ui.fn.partial(obj.processAppEvent, obj))
     obj.__toProcess = {}
-    obj.__enforcer = hs.timer.delayed.new(0.1, function()
-        local fn = coroutine.wrap(function()
-            obj:eventLoop()
-        end)
-        fn()
-        obj.__enforcer:start()
+    obj.__enforcer = hs.timer.doEvery(1, function()
         obj.__layout:reorder()
     end)
     return obj
@@ -52,14 +47,6 @@ function broker:start()
     self:enableHotkeys()
     return self
 end
-
-function broker:eventLoop()
-    while #self.__toProcess > 0 do
-        local fn = table.remove(self.__toProcess, 1)
-        fn()
-    end
-end
-
 
 ---@param appName string
 ---@param eventType any
@@ -143,14 +130,14 @@ end
 function broker:enableHotkeys()
     self.__events = hs.eventtap.new({ hs.eventtap.event.types.keyDown, hs.eventtap.event.types.flagsChanged },
         function(e)
-            if e:getKeyCode() == 12 and e:getFlags()['alt'] then
-                self.__focusedApp:hide()
-                return true
-            end
-            if e:getKeyCode() == 13 and e:getFlags()['alt'] then
-                self.__focusedApp:focusedWindow():minimize()
-                return true
-            end
+            -- if e:getKeyCode() == 12 and e:getFlags()['alt'] then
+            --     self.__focusedApp:hide()
+            --     return true
+            -- end
+            -- if e:getKeyCode() == 13 and e:getFlags()['alt'] then
+            --     self.__focusedApp:focusedWindow():minimize()
+            --     return true
+            -- end
             if e:getKeyCode() == 31 and e:getFlags()['alt'] then
                 hs.eventtap.keyStroke({ 'cmd' }, 'space')
                 return true

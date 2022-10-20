@@ -29,19 +29,12 @@ end
 ---@method cfg:get
 ---@param key string
 ---@return any
-function cfg:_get(key)
-    print('get: ' .. self.ns .. '|' .. key)
-    return hs.settings.get(self.ns .. '|' .. key)
-end
-
----@method cfg:get
----@param key string
----@return any
 function cfg:get(key)
-    local cachedKey = 'cached' .. '|' .. self.ns .. '|' .. key
-    local cacheValueKey = 'result' .. '|' .. self.ns .. '|' .. key
+    local requestKey = self.ns .. '|' .. key
+    local cachedKey = 'cached|' .. requestKey
+    local cacheValueKey = 'result|' .. requestKey
     if not DB[cachedKey] then
-        DB[cacheValueKey] = self:_get(key)
+        DB[cacheValueKey] = hs.settings.get(requestKey)
         DB[cachedKey] = true
     end
     return DB[cacheValueKey]
@@ -51,10 +44,12 @@ end
 ---@param key string
 ---@param value any
 function cfg:set(key, value)
-    local cachedKey = 'cached' .. '|' .. self.ns .. '|' .. key
+    local requestKey = self.ns .. '|' .. key
+    local cachedKey = 'cached|' .. requestKey
+    local cacheValueKey = 'result|' .. requestKey
     DB[cachedKey] = nil
-    print('set: '..key)
-    hs.settings.set(self.ns .. '|' .. key, value)
+    DB[cacheValueKey] = value
+    hs.settings.set(requestKey, value)
 end
 
 ---@method cfg:add

@@ -47,6 +47,11 @@ function app:new(appName, layout, app)
             obj.cfg:set('locked', nil)
         end
     end
+    obj.flowTime = hs.timer.delayed.new(300, function ()
+        if not obj.hsApp:isFrontmost() then return end
+        obj.cfg:event('flow')
+        obj.flowTime:start()
+    end)
     obj.transitions = {
         ['init->started'] = function()
             obj.transitions['init->starting']()
@@ -111,12 +116,14 @@ function app:new(appName, layout, app)
                 end 
                 checkLayout:start()
             end):start()
+            obj.flowTime:start()
         end,
         ['started->stopped'] = function()
             obj.log.f('App [%s] has stopped', appName)
             obj.screen:background(ui.preview.thumbnailS(obj.bundleID)):apply()
             obj.screen:hooks().onClick = function() hs.application.open(appName) end
             obj.state = 'stopped'
+            obj.flowTime:stop()
         end,
         ['focused->started'] = function()
             obj.log.f('App [%s] has lost focus', appName)

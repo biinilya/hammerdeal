@@ -81,19 +81,15 @@ function preview:new(previewArea)
     setmetatable(o, self)
 
     local hub = require 'ui.preview.events':new('ui.preview.window', 'info')
-    local sessEndTimer = hs.timer.delayed.new(0.1, function()
-        o:apply(o:state():highlighted(false))
-    end)
 
     o
     :previewEvents(
         hub:attach({'background'})
             :hook('onSessionBegin', function(ctx)
-                sessEndTimer:stop()
                 o:apply(o:state():highlighted(true))
             end)
             :hook('onSessionEnd', function()
-                sessEndTimer:start()
+                o:apply(o:state():highlighted(false))
             end)
             :hook('onLongTap', function()
             end)
@@ -120,6 +116,17 @@ function preview:new(previewArea)
             trackMouseUp = true,
             trackMouseMove = false,
             withShadow = true,
+        }, {
+            type = 'rectangle',
+            action = 'skip',
+            fillGradient = 'radial',
+            fillGradientColors = {
+                { white=1, alpha = 0.5 },
+                { white=1, alpha = 0.0 },
+            },
+            fillGradientCenter = { 0, 0 },
+            withShadow = false,
+            padding = 5,
         }):alpha(1.0):show()
         :clickActivating(false)
         :canvasMouseEvents(false, false, false, false)
@@ -141,6 +148,7 @@ function preview:apply(remoteState)
     end
     if self:rState():shifted() ~= remoteState:shifted() then
         self:canvas():elementAttribute(1, 'imageAlignment', remoteState:shifted() and 'right' or 'left')
+        self:canvas():elementAttribute(2, 'frame', self:canvas():elementBounds(1))
     end
     if self:rState():locked() ~= remoteState:locked() then
         ---@diagnostic disable-next-line: param-type-mismatch
@@ -151,7 +159,7 @@ function preview:apply(remoteState)
         self:rState():focused(remoteState:focused())
     end
     if self:rState():highlighted() ~= remoteState:highlighted() then
-        self:canvas():elementAttribute(1, 'imageAlpha', remoteState:highlighted() and 1.0 or 1.0)
+        self:canvas():elementAttribute(2, 'action', remoteState:highlighted() and 'fill' or 'skip')
         ---@diagnostic disable-next-line: param-type-mismatch
         self:rState():highlighted(remoteState:highlighted())
     end
