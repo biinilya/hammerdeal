@@ -76,7 +76,7 @@ function hub:attach(elementIds)
     o:actionMap({
         mouseEnter = function(x, y) end,
         mouseExit = function(x, y) end,
-        mouseMouseUp = function(x, y) end,
+        mouseUp = function(x, y) end,
         mouseDown = function(x, y) end,
     })
     hs.fnutils.each(elementIds, function(elementId)
@@ -165,11 +165,8 @@ function watcher:idle()
         end)
 
         self:actionMap().mouseDown = function(_, _)
-            self:actionMap().mouseDown = function(_, _) end
-            self:actionMap().mouseUp = function(_, _)
-                self.ctx.status = 'click'
-                self:hooks().onClick(self.ctx)
-            end
+            self.ctx.status = 'click'
+            self:hooks().onClick(self.ctx)
         end
 
         self:hooks().onSessionBegin(self.ctx)

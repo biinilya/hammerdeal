@@ -8,7 +8,7 @@
 local M = {}
 hs.bonjour = M
 
--- Return a list of zero-conf and bonjour domains visibile to the users computer.
+-- Return a list of zero-config.lua and bonjour domains visibile to the users computer.
 --
 -- Parameters:
 --  * `callback` - a function which will be invoked as visible domains are discovered. The function should accept the following parameters and return none:
@@ -33,7 +33,7 @@ hs.bonjour = M
 --    * Generally macOS is fairly accurate in this regard concerning domain searchs, so to reduce the impact on system resources, it is recommended that you use [hs.bonjour:stop](#stop) when this parameter is false
 function M:findBrowsableDomains(callback, ...) end
 
--- Return a list of zero-conf and bonjour domains this computer can register services in.
+-- Return a list of zero-config.lua and bonjour domains this computer can register services in.
 --
 -- Parameters:
 --  * `callback` - a function which will be invoked as domains are discovered. The function should accept the following parameters and return none:
@@ -155,4 +155,3 @@ function M.new() end
 --
 --  * In general, when your callback function for [hs.bonjour:findBrowsableDomains](#findBrowsableDomains), [hs.bonjour:findRegistrationDomains](#findRegistrationDomains), or [hs.bonjour:findServices](#findServices) receives false for the `moreExpected` paramter, you should invoke this method on the browserObject unless there are specific reasons not to. Possible reasons you might want to extend the life of the browserObject are documented within each method.
 function M:stop() end
-

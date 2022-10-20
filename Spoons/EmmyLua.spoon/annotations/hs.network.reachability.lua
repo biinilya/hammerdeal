@@ -109,7 +109,7 @@ function M.internet() end
 --
 -- Notes:
 --  * This is equivalent to `hs.network.reachability.forAddress("169.254.0.0")`
---  * You can use this to determine if any interface has an IPv4 link local address (i.e. zero conf or local only networking) by checking the "isDirect" flag:
+--  * You can use this to determine if any interface has an IPv4 link local address (i.e. zero config.lua or local only networking) by checking the "isDirect" flag:
 --    * `hs.network.reachability.linklocal():status() & hs.network.reachability.flags.isDirect`
 --  * If the internet is reachable, then this network will also be reachable by default -- use the isDirect flag to ensure that the route is local.
 function M.linkLocal() end
@@ -182,4 +182,3 @@ function M:statusString() end
 -- Returns:
 --  * the reachability object
 function M:stop() end
-

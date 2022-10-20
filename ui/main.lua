@@ -1,17 +1,3 @@
-ui = {
-    frame = require('ui.frame'),
-    preview = {
-        events = require('ui.preview.events'),
-        state = require('ui.preview.state'),
-        window = require('ui.preview.window')
-    },
-    control = {
-        viewLink = require('ui.control.viewLink'),
-        watcher = require('ui.control.watcher')
-    }
-}
-hs.window.animationDuration = 0.5
-
 ---@class UI
 UI = {}
 UI.__index = UI
@@ -20,6 +6,7 @@ UI.__name = 'UI'
 UI.bg = nil
 ---@type ui.preview.window[]
 UI.previews = nil
+UI.controller = nil
 
 ---@return UI
 function UI:new()
@@ -31,24 +18,17 @@ end
 function UI:init()
     local log = hs.logger.new('ui.main', 'warning')
     local display = hs.screen.mainScreen():frame()
-    local fullDisplay = hs.screen.mainScreen():fullFrame()
     local offset = (fullDisplay.h - display.h) / fullDisplay.h
     local capacity = { 1, 2, 3, 4, 5, 6, 7, 8}
-    local workspaceRect = ui.frame:fractions(0.15, offset, 0.85, 1-offset)
     local previewSpaceRect = ui.frame:fractions(0.0, 0, 0.15, 1)
     local previewRect = hs.fnutils.map(capacity, function(i)
-        return ui.frame:fractions(0, offset + (i-1)/#capacity, 0.15, 1/#capacity)
-    end)
-    self.previews = hs.fnutils.map(previewRect, function(rect)
-        return ui.preview.window:new(rect)
+        return pw:new(
+            f:fractions(0, offset + (i - 1) / #capacity, 0.15, 1 / #capacity):rect()
+        )
     end)
 
-    self.bg = hs.canvas.new(previewSpaceRect:rect()):appendElements({
-        --type = "image",
-        --action = "fill",
-        --image = hs.image.imageFromPath(hs.configdir .. "/bg.png"),
-        --imageScaling = "scaleToFit",
-        --imageAlpha = 0.8,
+    self.bg = hs.canvas.new(previewSpaceRect:rect())
+    self.bg:appendElements({
         type = "rectangle",
         action = "fill",
         fillColor = { white = 0.1, alpha = 0.7 },
@@ -65,19 +45,15 @@ function UI:init()
         },
         fillGradientCenter = { x = -1.0, y = -1.0 },
         compositeRule = 'sourceOver',
-    })
-    :level(hs.canvas.windowLevels.floating)
-    :wantsLayer(true)
-    self.controller = ui.control.watcher:new(self.previews)
+    }):level(hs.canvas.windowLevels.floating):wantsLayer(true)
+    self.bg:show()
+    self.controller = c:new():start(previewRect)
 
     return self
 end
 
 
 function UI:start()
-    self.bg:show()
-    hs.fnutils.each(self.previews, function(p) p:show() end)
-    self.controller:start()
     return self
 end
 

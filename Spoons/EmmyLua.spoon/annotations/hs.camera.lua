@@ -1,4 +1,4 @@
---# selene: allow(unused_variable)
+z--# selene: allow(unused_variable)
 ---@diagnostic disable: unused-local
 
 -- Inspect the system's camera devices
@@ -146,4 +146,3 @@ function M.stopWatcher() end
 --  * The UID is not guaranteed to be stable across reboots
 ---@return string
 function M:uid() end
-

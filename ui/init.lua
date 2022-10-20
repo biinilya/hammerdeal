@@ -1,0 +1,56 @@
+---@diagnostic disable-next-line lowercase-global
+ui = {}
+ui.__index = ui
+
+ui.name = "ui"
+ui.version = "0.1"
+ui.author = "http://github.com/biinilya"
+ui.license = "MIT - https://opensource.org/licenses/MIT"
+
+ui.fn = hs.fnutils
+ui.screen = hs.screen.mainScreen():fullFrame()
+ui.desktop = hs.screen.mainScreen():frame()
+ui.config = require('ui.config')
+ui.control = require('ui.control')
+ui.preview = require('ui.preview')
+ui.main = require('ui.main')
+ui.init = ui
+
+hs.screen.watcher.newWithActiveScreen(function ()
+    ui.screen = hs.screen.mainScreen():fullFrame()
+    ui.desktop = hs.screen.mainScreen():frame()
+end)
+
+---@generic T
+---@param list T[]
+---@param filter fun(value: T): boolean
+---@return T
+function ui.ifilter(list, filter)
+    local result = {}
+    for _, v in ipairs(list) do
+        if filter(v) then
+            table.insert(result, v)
+        end
+    end
+    return result
+end
+
+---@generic T
+---@param ref T
+---@return fun(value: T): boolean
+function ui.eq(ref)
+    return function (value)
+        return value == ref
+    end
+end
+
+---@generic T
+---@param ref T
+---@return fun(value: T): boolean
+function ui.ne(ref)
+    return function (value)
+        return value ~= ref
+    end
+end
+
+return ui

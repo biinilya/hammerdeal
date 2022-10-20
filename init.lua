@@ -1,3 +1,4 @@
-local app = require 'ui.main'
-UI = app:new():start()
-    
+require('ui')
+
+App = ui.control.broker:new()
+App:start()
