@@ -37,6 +37,19 @@ function broker:start()
         end
     end
     self.__bbcLife:start()
+    local f = self.__layout.workspace:toUnitRect(ui.desktop):fromUnitRect(ui.screen)
+    local rule = string.format('mov all foc [%d,%d,%d,%d] 0,0',
+        math.ceil(f.x * 100 / ui.screen.w),
+        math.ceil(f.y * 100 / ui.screen.h),
+        math.ceil((f.x + f.w) * 100 / ui.screen.w),
+        math.ceil((f.y + f.h) * 100 / ui.screen.h)
+    )
+
+
+    hs.window.layout.new({
+        { self.__bbcWorld, rule },
+
+    },'bbcworld', 'info'):start()
     -- self.__bbcWorld:subscribe(hs.window.filter.windowFocused, function(w, appName)
     --     table.insert(self.__toProcess, ui.fn.partial(self.onFocusEvent, self, w, appName))
     -- end)

@@ -124,7 +124,7 @@ function preview:new(previewArea)
                 { white=1, alpha = 0.5 },
                 { white=1, alpha = 0.0 },
             },
-            fillGradientCenter = { 0, 0 },
+            fillGradientCenter = { x=0, y=0 },
             withShadow = false,
             padding = 5,
         }):alpha(1.0):show()
