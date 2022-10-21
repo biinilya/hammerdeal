@@ -83,6 +83,8 @@ function preview:onDND(canvas, event, details)
     if event == "enter" then
         -- could inspect details and reject with `return false`
         -- but we're going with the default of true
+        canvas:elementAttribute(1, 'action', 'skip')
+        canvas:elementAttribute(3, 'action', 'fill')
         self:state():hooks().onClick()
         return true
 
@@ -90,48 +92,15 @@ function preview:onDND(canvas, event, details)
     elseif event == "exit" or event == "exited" then
         -- return type ignored
 
+        canvas:elementAttribute(1, 'action', 'fill')
+        canvas:elementAttribute(3, 'action', 'skip')
         -- the drag finished -- it was released on us!
+
     elseif event == "receive" then
-
         local name = details.pasteboard
-
-        ---@type table<string, boolean>
-        local types = hs.pasteboard.typesAvailable(name)
-        hs.printf("\n\t%s\n%s\n%s\n", name, (hs.inspect.inspect(types):gsub("%s+", " ")), hs.inspect.inspect(hs.pasteboard.allContentTypes()))
-
-        if types.string then
-            local stuffs = hs.pasteboard.readString(name, true) or {} -- sometimes they lie
-            hs.printf("strings: %d", #stuffs)
-            for i, v in ipairs(stuffs) do
-                print(i, v)
-            end
-        end
-
-        if types.styledText then
-            local stuffs = hs.pasteboard.readStyledText(name, true) or {} -- sometimes they lie
-            hs.printf("styledText: %d", #stuffs)
-            for i, v in ipairs(stuffs) do
-                hs.console.printStyledtext(i, v)
-            end
-        end
-
-        if types.URL then
-            local stuffs = hs.pasteboard.readURL(name, true) or {} -- sometimes they lie
-            hs.printf("URL: %d", #stuffs)
-            for i, v in ipairs(stuffs) do
-                print(i, (hs.inspect.inspect(v):gsub("%s+", " ")))
-            end
-        end
-
-        -- try dragging an image from Safari
-        if types.image then
-            local stuffs = hs.pasteboard.readImage(name, true) or {} -- sometimes they lie
-            hs.printf("image: %d", #stuffs)
-        end
-
-        print("")
-        -- could inspect details and reject with `return false`
-        -- but we're going with the default of true
+        hs.pasteboard.writeAllData(nil, hs.pasteboard.readAllData(name, true))
+        canvas:elementAttribute(1, 'action', 'fill')
+        canvas:elementAttribute(3, 'action', 'skip')
     end
 end
 
@@ -167,6 +136,7 @@ function preview:new(previewArea)
     :state(ui.preview.state:new())
     :canvas(hs.canvas.new(previewArea):appendElements({
             type = 'image',
+            action = 'fill',
             id = 'background',
             image = o:rState():background(),
             imageAlignment = 'left',
@@ -188,6 +158,16 @@ function preview:new(previewArea)
             },
             fillGradientCenter = { x=0, y=0 },
             withShadow = false,
+            padding = 5,
+        }, {
+            type = 'text',
+            action = 'skip',
+            textSize = 100,
+            text = '⟰',
+            textColor = { white=1, alpha = 0.5 },
+            fillGradientCenter = { x = 0, y = 0 },
+            textAlignment = 'center',
+            withShadow = true,
             padding = 5,
         }):alpha(1.0):show()
         :clickActivating(false)
