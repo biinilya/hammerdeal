@@ -45,14 +45,12 @@ function broker:start()
         math.ceil((f.y + f.h) * 100 / ui.screen.h)
     )
 
-
     hs.window.layout.new({
         { self.__bbcWorld, rule },
-
     },'bbcworld', 'info'):start()
-    -- self.__bbcWorld:subscribe(hs.window.filter.windowFocused, function(w, appName)
-    --     table.insert(self.__toProcess, ui.fn.partial(self.onFocusEvent, self, w, appName))
-    -- end)
+    self.__bbcWorld:subscribe(hs.window.filter.windowFocused, function(w, appName)
+        table.insert(self.__toProcess, ui.fn.partial(self.onFocusEvent, self, w, appName))
+    end)
     -- self.__bbcWorld:subscribe({hs.window.filter.windowDestroyed}, function(w, appName, event)
     --     self:onWindowClose(w, appName)
     -- end, true)
