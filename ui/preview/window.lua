@@ -73,6 +73,68 @@ function preview:onClickedHook(hook)
     return self:state():hooks().onClick
 end
 
+---@param canvas hs.canvas
+---@param event string
+---@param details any
+function preview:onDND(canvas, event, details)
+    hs.printf("%s:%s - %s", os.time(), event, (hs.inspect.inspect(details):gsub("%s+", " ")))
+
+    -- the drag entered our view frame
+    if event == "enter" then
+        -- could inspect details and reject with `return false`
+        -- but we're going with the default of true
+        self:state():hooks().onClick()
+        return true
+
+        -- the drag exited our view domain without a release (or we returned false for "enter")
+    elseif event == "exit" or event == "exited" then
+        -- return type ignored
+
+        -- the drag finished -- it was released on us!
+    elseif event == "receive" then
+
+        local name = details.pasteboard
+
+        ---@type table<string, boolean>
+        local types = hs.pasteboard.typesAvailable(name)
+        hs.printf("\n\t%s\n%s\n%s\n", name, (hs.inspect.inspect(types):gsub("%s+", " ")), hs.inspect.inspect(hs.pasteboard.allContentTypes()))
+
+        if types.string then
+            local stuffs = hs.pasteboard.readString(name, true) or {} -- sometimes they lie
+            hs.printf("strings: %d", #stuffs)
+            for i, v in ipairs(stuffs) do
+                print(i, v)
+            end
+        end
+
+        if types.styledText then
+            local stuffs = hs.pasteboard.readStyledText(name, true) or {} -- sometimes they lie
+            hs.printf("styledText: %d", #stuffs)
+            for i, v in ipairs(stuffs) do
+                hs.console.printStyledtext(i, v)
+            end
+        end
+
+        if types.URL then
+            local stuffs = hs.pasteboard.readURL(name, true) or {} -- sometimes they lie
+            hs.printf("URL: %d", #stuffs)
+            for i, v in ipairs(stuffs) do
+                print(i, (hs.inspect.inspect(v):gsub("%s+", " ")))
+            end
+        end
+
+        -- try dragging an image from Safari
+        if types.image then
+            local stuffs = hs.pasteboard.readImage(name, true) or {} -- sometimes they lie
+            hs.printf("image: %d", #stuffs)
+        end
+
+        print("")
+        -- could inspect details and reject with `return false`
+        -- but we're going with the default of true
+    end
+end
+
 ---@param previewArea hs.geometry
 ---@return ui.preview.window | ui.preview.window
 function preview:new(previewArea)
@@ -130,6 +192,7 @@ function preview:new(previewArea)
         }):alpha(1.0):show()
         :clickActivating(false)
         :canvasMouseEvents(false, false, false, false)
+        :draggingCallback(ui.fn.partial(o.onDND, o))
         :mouseCallback(hub.cbForMouseEvents)
         :level(hs.canvas.windowLevels.dock)
         :wantsLayer(false)
