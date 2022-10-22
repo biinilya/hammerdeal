@@ -1,4 +1,4 @@
-z--# selene: allow(unused_variable)
+--# selene: allow(unused_variable)
 ---@diagnostic disable: unused-local
 
 -- Inspect the system's camera devices

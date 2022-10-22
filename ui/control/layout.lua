@@ -12,22 +12,26 @@ layout.__name = 'layout'
 layout.log = hs.logger.new('layout', 'debug')
 
 ---@return ui.control.layout
-function layout:    new(numCells)
+function layout:new(numCells)
     local o = {}
     setmetatable(o, self)
-    o.updater = hs.timer.doEvery(15, function() o:reorder() end):start()
-    o.gates = {}
-    o.connections = {}
-    o.canvas = hs.canvas.new(ui.screen)
+    return o:init(numCells)
+end
+
+function layout:init(numCells)
+    self.updater = hs.timer.doEvery(1, function()
+        self:reorder()
+    end):start()
+    self.gates = {}
+    self.connections = {}
+    self.canvas = hs.canvas.new(ui.screen)
         :appendElements(
-            { action = "build", padding = 0, type = "rectangle" },
-            { action = "clip", frame={x='15%', y='5%', w='83%', h='93%'}, type = "rectangle", reversePath = true},
             {
                 type = "image",
                 action = "fill",
                 image = hs.image.imageFromPath(hs.configdir .. '/bg.png'),
                 imageAlpha = 0.5,
-                imageScaling = 'scaleToFit'
+                imageScaling = 'scaleToFit',
             }, {
                 type = "rectangle",
                 action = "fill",
@@ -44,31 +48,44 @@ function layout:    new(numCells)
                     { black = 0.1, alpha = 0.9 },
                 },
                 fillGradientCenter = { x = -1.0, y = -1.0 },
-                compositeRule = 'sourceOver',
             }
         )
-        :level(hs.canvas.windowLevels.floating)
+        :level(hs.canvas.windowLevels.desktopIcon)
         :clickActivating(false)
         :behavior({
             hs.canvas.windowBehaviors.transient,
             hs.canvas.windowBehaviors.canJoinAllSpaces,
             hs.canvas.windowBehaviors.fullScreenAuxiliary
         })
-        :wantsLayer(false)
         :alpha(1.0)
+        :wantsLayer(true)
         :show()
 
-    o.workspace = hs.geometry(o.canvas:elementBounds(2))
+    self.workspace = hs.geometry('[15,5,95,97]'):fromUnitRect(ui.screen)
 
     ---@type hs.geometry
-    local workspace = hs.geometry.copy(o.workspace)
+    local workspace = hs.geometry.copy(self.workspace)
     workspace.x, workspace.w, workspace.h = 0, workspace.x, workspace.h/8
     for i = 1, numCells do
         local cell = hs.geometry.copy(hs.geometry(workspace))
         cell.y = cell.y + (cell.h * (i - 1))
-        o.gates[i] = ui.preview.window:new(cell):show()
+        -- local unitCell = {
+            -- x = tostring(math.floor(10000 * cell.x / ui.screen.w)/100)..'%',
+            -- y = tostring(math.floor(10000 * cell.y / ui.screen.h)/100)..'%',
+            -- w = tostring(math.floor(10000 * cell.w / ui.screen.w)/100)..'%',
+            -- h = tostring(math.floor(10000 * cell.h / ui.screen.h)/100)..'%'
+        -- }
+        -- print(hs.inspect.inspect(unitCell))
+
+        self.gates[i] = ui.preview.window:new(cell, i)
+        -- self.canvas:appendElements({
+            -- type = 'canvas',
+            -- action = 'fill',
+            -- canvas = self.gates[i]:canvas(),
+            -- frame = unitCell,
+        -- })
     end
-    return o
+    return self
 end
 
 ---@param id string
@@ -85,8 +102,14 @@ function layout:detach(id)
     self.connections[id] = nil
 end
 
-function layout:reorder()
+function layout:cellSize()
+    ---@type hs.geometry
+    local f = hs.geometry.copy(self.workspace)
+    f.w = 276
+    return f
+end
 
+function layout:reorder()
     ---@param cfg ui.cfg
     local function fetureVec(cfg)
         local fatures = {}

@@ -2,147 +2,167 @@
 ---@field name string
 ---@field log hs.logger
 ---@field cfg ui.cfg
----@field screen ui.control.view | any
+---@field screen ui.preview.state
 ---@field layout ui.control.layout
 ---@field attached boolean
 ---@field hsApp hs.application
----@field windows hs.window[]
+---@field windows {hs.window: number}
 ---@field focusHist hs.window[]
 ---@field transitions {string: fun()}
+---@field snapshotter hs.timer
 ---@field state string
 local app = {}
 app.__index = app
 app.__lastId = 0
+app.__globalConfig = ui.config:new('ui.control.app')
+
+hs.hotkey.bind({ "alt" }, "1", function()
+    app.__globalConfig:set('live.locked', false)
+    app.__globalConfig:set('live.floating', false)
+    hs.reload()
+end)
+
+hs.hotkey.bind({ "alt" }, "2", function()
+    app.__globalConfig:set('live.locked', true)
+    app.__globalConfig:set('live.floating', true)
+    hs.reload()
+end)
+
+hs.hotkey.bind({ "alt" }, "3", function()
+    app.__globalConfig:set('live.locked', true)
+    app.__globalConfig:set('live.floating', false)
+    hs.reload()
+end)
+
+hs.hotkey.bind({ "alt" }, "4", function()
+    app.__globalConfig:set('live.locked', false)
+    app.__globalConfig:set('live.floating', true)
+    hs.reload()
+end)
+
+---@return ui.control.app
+function app:new(appName, layout, app)
+    local obj = {}
+    setmetatable(obj, self)
+    return obj:init(appName, layout, app)
+end
 
 ---@param appName string
 ---@param layout ui.control.layout
 ---@param app hs.application | nil
 ---@return ui.control.app
-function app:new(appName, layout, app)
-    local obj = {}
-    setmetatable(obj, self)
-    obj.name = appName
-    obj.hsApp = app
-    obj.bundleID = 'com.apple.finder'
+function app:init(appName, layout, app)
+    self.name = appName
+    self.hsApp = app
+    self.bundleID = 'com.apple.finder'
     if app ~= nil and app:bundleID() ~= nil then
-        obj.bundleID = app:bundleID()
+        self.bundleID = app:bundleID()
     end
-    obj.layout = layout
-    obj.attached = false
-    obj.cfg = ui.config:new(appName)
-    obj.log = hs.logger.new(appName, 'debug')
-    obj.log.f('Init app [%s]', appName)
-    obj.state = 'init'
-    obj.screen = ui.preview.state:new()
-        :background(ui.preview.thumbnailS(obj.bundleID))
+    self.layout = layout
+    self.attached = false
+    self.cfg = ui.config:new(appName)
+    self.log = hs.logger.new(appName, 'debug')
+    self.log.f('Init app [%s]', appName)
+    self.state = 'init'
+    self.windows = {}
+    self.windowsCount = 0
+    self.screen = ui.preview.state:new()
+        :background(ui.preview.thumbnailS(self.bundleID))
         :visible(true)
-    if obj.cfg:get('locked') then
-        obj.screen:locked(true)
+    if self.cfg:get('locked') then
+        self.screen:locked(true)
     end
-    obj.screen:apply()
-    obj.screen:hooks().onLock = function ()
-        if obj.screen:locked() then
-            obj.cfg:set('locked', hs.timer.secondsSinceEpoch())
+    self.screen:apply()
+    self.screen:hooks().onLock = function ()
+        if self.screen:locked() then
+            self.cfg:set('locked', hs.timer.secondsSinceEpoch())
         else
-            obj.cfg:set('locked', nil)
+            self.cfg:set('locked', nil)
         end
     end
-    obj.flowTime = hs.timer.delayed.new(300, function ()
-        if not obj.hsApp:isFrontmost() then return end
-        obj.cfg:event('flow')
-        obj.flowTime:start()
+    self.screen:hooks().onClick = ui.partial(self.activate, self)
+    self.flowTime = hs.timer.delayed.new(300, function ()
+        if not self.hsApp:isFrontmost() then return end
+        self.cfg:event('flow')
+        self.flowTime:start()
     end)
-    obj.transitions = {
+    self.snapshotter = hs.timer.new(hs.math.randomFloat()/2 + 1, ui.fn.partial(self.doSnapshot, self), true)
+    self.transitions = {
         ['init->started'] = function()
-            obj.transitions['init->starting']()
-            obj.transitions['starting->started']()
+            self.transitions['init->starting']()
+            self.transitions['starting->started']()
         end,
         ['init->focused'] = function()
-            obj.transitions['init->starting']()
-            obj.transitions['starting->started']()
-            obj.transitions['started->focused']()
+            self.transitions['init->starting']()
+            self.transitions['starting->started']()
+            self.transitions['started->focused']()
         end,
-        ['starting->stopped'] = function()
-            obj.transitions['starting->started']()
-            obj.transitions['started->stopped']()
+        ['starting->stopped']  = function()
+            self.transitions['starting->started']()
+            self.transitions['started->stopped']()
         end,
         ['starting->focused'] = function()
-            obj.transitions['starting->started']()
-            obj.transitions['started->focused']()
+            self.transitions['starting->started']()
+            self.transitions['started->focused']()
         end,
         ['focused->stopped'] = function()
-            obj.transitions['focused->started']()
-            obj.transitions['started->stopped']()
+            self.transitions['focused->started']()
+            self.transitions['started->stopped']()
         end,
         -------------------------------------------
         ['init->starting'] = function()
-            obj.log.f('Starting app [%s]', appName)
-            obj.screen:background(ui.preview.thumbnail(obj.bundleID)):apply()
-            obj.screen:hooks().onClick = function() end
-            obj.state = 'starting'
+            self.log.f('Starting app [%s]', appName)
+            self.screen:background(ui.preview.thumbnail(self.bundleID)):apply()
+            self.state = 'starting'
         end,
         ['init->stopped'] = function()
-            obj.log.f('App [%s] is stopped', appName)
-            obj.screen:background(ui.preview.thumbnailS(obj.bundleID)):apply()
-            obj.screen:hooks().onClick = function() hs.application.open(appName) end
-            obj.state = 'stopped'
+            self.log.f('App [%s] is stopped', appName)
+            self.screen:background(ui.preview.thumbnailS(self.bundleID)):apply()
+            self.state = 'stopped'
         end,
         ['starting->started'] = function()
-            obj.log.f('App [%s] has started', appName)
-            obj.screen:background(ui.preview.thumbnail(obj.bundleID)):apply()
-            if #obj.hsApp:allWindows() then
-                obj.screen:hooks().onClick = function() obj.hsApp:activate() end
-            else
-                obj.screen:hooks().onClick = function() hs.application.open(appName) end
-            end
-            obj.state = 'started'
+            self.log.f('App [%s] has started', appName)
+            self.screen:background(ui.preview.thumbnail(self.bundleID)):apply()
+            self.state = 'started'
         end,
         ['started->focused'] = function()
-            obj.log.f('App [%s] has been focused', appName)
-            obj.screen:focused(true):apply()
-            obj.screen:hooks().onClick = function() end
-            obj.cfg:event('focused')
-            obj.state = 'focused'
+            self.log.f('App [%s] has been focused', appName)
+            self.screen:focused(true):apply()
+            self.cfg:event('focused')
+            self.state = 'focused'
 
-            local autoLayout = (obj.cfg:get('layout') or hs.keycodes.layouts()[1])
+            local autoLayout = (self.cfg:get('layout') or hs.keycodes.layouts()[1])
             hs.keycodes.setLayout(autoLayout)
             local checkLayout = nil
             checkLayout = hs.timer.delayed.new(1, function()
-                if not obj.hsApp:isFrontmost() then return end
+                if not self.hsApp:isFrontmost() then return end
                 local currentLayout = hs.keycodes.currentLayout()
                 if autoLayout ~= currentLayout then
-                    obj.cfg:set('layout', currentLayout)
+                    self.cfg:set('layout', currentLayout)
                     autoLayout = currentLayout
-                end 
+                end
                 checkLayout:start()
             end):start()
-            obj.flowTime:start()
+            self.flowTime:start()
         end,
         ['started->stopped'] = function()
-            obj.log.f('App [%s] has stopped', appName)
-            obj.screen:background(ui.preview.thumbnailS(obj.bundleID)):apply()
-            obj.screen:hooks().onClick = function() hs.application.open(appName) end
-            obj.state = 'stopped'
-            obj.flowTime:stop()
+            self.log.f('App [%s] has stopped', appName)
+            self.screen:background(ui.preview.thumbnailS(self.bundleID)):apply()
+            self.state = 'stopped'
+            self.flowTime:stop()
         end,
         ['focused->started'] = function()
-            obj.log.f('App [%s] has lost focus', appName)
-            if #obj.hsApp:allWindows() then
-                obj.screen:hooks().onClick = function() obj.hsApp:activate() end
-            else
-                obj.screen:hooks().onClick = function() hs.application.open(appName) end
-            end
-            obj.screen:focused(false):apply()
-            obj.state = 'started'
+            self.log.f('App [%s] has lost focus', appName)
+            self.screen:focused(false):apply()
+            self.state = 'started'
         end,
         ['stopped->starting'] = function()
-            obj.log.f('App [%s] is restarting', appName)
-            obj.screen:background(ui.preview.thumbnail(obj.bundleID)):apply()
-            obj.screen:hooks().onClick = function() end
-            obj.state = 'starting'
+            self.log.f('App [%s] is restarting', appName)
+            self.screen:background(ui.preview.thumbnail(self.bundleID)):apply()
+            self.state = 'starting'
         end,
     }
-    return obj
+    return self
 end
 
 ---@param status string
@@ -157,7 +177,8 @@ function app:changeStatusTo(status, appObject)
     if appObject ~= nil then 
         self.hsApp = appObject
     end
-    if self.cfg:get('locked') or (self.hsApp and #self.hsApp:allWindows() > 0) then
+
+    if self.cfg:get('locked') or (self.hsApp ~= nil and self.windowsCount > 0) then
         if not self.attached then
             self.attached = true
             self.layout:attach(self.name, self.screen, self.cfg)
@@ -170,17 +191,103 @@ function app:changeStatusTo(status, appObject)
     end
 end
 
-    -- self.snapshotter = hs.timer.doEvery(1, function()
-    --     local w
-    --     if #self.focusHist > 0 then
-    --         w = self.focusHist[#self.focusHist]
-    --     elseif #self.windows > 0 then
-    --         w = self.windows[#self.windows]
-    --     end
-    --     if not w then return end
-    --     if not self.screen then return end
-    --     self.screen:background(w:snapshot(true)):apply()
-    -- end)
+---@param windowObject hs.window
+function app:registerWindow(windowObject)
+    self.windows[windowObject] = 1
+    self.snapshotter:start()
+    local count = 0
+    for _, _ in pairs(self.windows) do
+        count = count + 1
+    end
+    if self.windowsCount == 0 and count ~= 0 then
+        self.windowsCount = count
+        self:changeStatusTo(self.state, self.hsApp)
+    end
+    self.windowsCount = count
+end
+
+---@param windowObject hs.window
+function app:deregisterWindow(windowObject)
+    self.windows[windowObject] = nil
+    local count = 0
+    for _, _ in pairs(self.windows) do
+        count = count + 1
+    end
+    if self.windowsCount ~= 0 and count == 0 then
+        self.windowsCount = count
+        self:changeStatusTo(self.state, self.hsApp)
+    end
+    self.windowsCount = count
+end
+
+---@param windowObject hs.window
+function app:focusWindow(windowObject)
+    for windowID, _ in pairs(self.windows) do
+        self.windows[windowID] = 1
+    end
+    self.windows[windowObject] = 2
+    self.snapshotter:start()
+end
+
+function app:activate()
+    if self.state == 'starting' or self.state == 'focused' then return end
+
+    ---@type hs.window
+    local w
+    for window, focused in pairs(self.windows) do
+        ---@type hs.window
+        w = window
+        if focused == 2 then
+            break
+        end
+    end
+    if w ~= nil then
+        if self.hsApp:isHidden() then
+            self.hsApp:unhide()
+        end
+        self.hsApp:setFrontmost()
+        if w:isMinimized() then w:unminimize() end
+        w:focus()
+        return
+    end
+    if not self.hsApp:isRunning() then
+        hs.application.open(self.name)
+        return
+    end
+    for _, w in ipairs(self.hsApp:allWindows()) do
+        w:unminimize()
+    end
+    self.hsApp:activate(true)
+    hs.eventtap.keyStroke({ 'cmd' }, 'N')
+    hs.eventtap.keyStroke({ 'cmd' }, 'T')
+
+end
+
+function app:doSnapshot()
+    local locked = self.screen:locked()
+    local confKey = string.format('live.%s', locked and 'locked' or 'floating')
+    if not self.__globalConfig:get(confKey) then
+        return
+    end
+
+    ---@type hs.window
+    local w = nil
+    for window, focused in pairs(self.windows) do
+        w = window
+        if focused == 2 then
+            break
+        end
+    end
+    if not w then
+        return
+    end
+    if w:isMinimized() then w:unminimize() end
+    if not self.screen then return end
+
+    self.screen:background(w:snapshot()):apply()
+
+    collectgarbage('step')
+end
 
 return app
 
@@ -238,7 +345,7 @@ return app
 
 -- function app:onOffline(w)
 --     self.log.df('onOffline()')
--- obj     self.screen:background(ui.preview.thumbnail(obj.bundleID))
+-- self     self.screen:background(ui.preview.thumbnail(obj.bundleID))
 -- end
 
 

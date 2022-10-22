@@ -13,7 +13,8 @@ state.__name = 'state'
 
 ---@type hs.geometry
 local workspace = hs.geometry { 0.15, 0.05, 0.80, 0.90 }
-local filler = hs.canvas.new(workspace:fromUnitRect(ui.screen)):appendElements({
+local filler = hs.canvas.new({ w = 276, h = 200 }):appendElements({
+
     type = "rectangle",
     action = "fill",
     fillColor = { white = 0.1, alpha = 0.0 },

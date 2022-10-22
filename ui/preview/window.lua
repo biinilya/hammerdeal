@@ -1,7 +1,10 @@
 ---@class ui.preview.window
+---@field delayedClick hs.timer.delayed
 local preview = {}
 preview.__index = preview
 preview.__name = 'preview'
+preview.__digitsMap = { '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⓪' }
+preview.__lettersMap = {'🅐','🅑','🅒','🅓','🅔','🅕','🅖','🅗','🅘','🅙','🅚','🅛','🅜','🅝','🅞','🅟','🅠','🅡','🅢','🅣','🅤','🅥','🅦','🅧','🅨','🅩'}
 
 ---@param s ui.preview.state | nil
 ---@return ui.preview.state | ui.preview.window
@@ -77,16 +80,15 @@ end
 ---@param event string
 ---@param details any
 function preview:onDND(canvas, event, details)
-    hs.printf("%s:%s - %s", os.time(), event, (hs.inspect.inspect(details):gsub("%s+", " ")))
-
     -- the drag entered our view frame
     if event == "enter" then
         -- could inspect details and reject with `return false`
         -- but we're going with the default of true
         canvas:elementAttribute(1, 'action', 'skip')
         canvas:elementAttribute(3, 'action', 'fill')
-        self:state():hooks().onClick()
+        self.delayedClick:start()
         return true
+
 
         -- the drag exited our view domain without a release (or we returned false for "enter")
     elseif event == "exit" or event == "exited" then
@@ -94,24 +96,31 @@ function preview:onDND(canvas, event, details)
 
         canvas:elementAttribute(1, 'action', 'fill')
         canvas:elementAttribute(3, 'action', 'skip')
+        self.delayedClick:stop()
         -- the drag finished -- it was released on us!
 
     elseif event == "receive" then
         local name = details.pasteboard
-        hs.pasteboard.writeAllData(nil, hs.pasteboard.readAllData(name, true))
+        hs.pasteboard.writeAllData(nil, hs.pasteboard.readAllData(name))
         canvas:elementAttribute(1, 'action', 'fill')
         canvas:elementAttribute(3, 'action', 'skip')
+        self.delayedClick:stop()
     end
 end
 
 ---@param previewArea hs.geometry
+---@param index number
 ---@return ui.preview.window | ui.preview.window
-function preview:new(previewArea)
+function preview:new(previewArea, index)
     ---@type ui.preview.window
     local o = {}
     setmetatable(o, self)
 
     local hub = require 'ui.preview.events':new('ui.preview.window', 'info')
+
+    o.delayedClick = hs.timer.delayed.new(1.0, function()
+        o:state():hooks().onClick()
+    end)
 
     o
     :previewEvents(
@@ -141,13 +150,13 @@ function preview:new(previewArea)
             image = o:rState():background(),
             imageAlignment = 'left',
             imageAlpha = 1,
-            padding = 5,
-            trackMouseByBounds = true,
             trackMouseEnterExit = true,
             trackMouseDown = true,
             trackMouseUp = true,
+            antialias = false,
             trackMouseMove = false,
             withShadow = true,
+            padding=5,
         }, {
             type = 'rectangle',
             action = 'skip',
@@ -163,19 +172,28 @@ function preview:new(previewArea)
             type = 'text',
             action = 'skip',
             textSize = 100,
-            text = '⟰',
+            text = 'COPY',
             textColor = { white=1, alpha = 0.5 },
             fillGradientCenter = { x = 0, y = 0 },
             textAlignment = 'center',
             withShadow = true,
             padding = 5,
+        }, {
+            type = 'text',
+            action = 'skip',
+            textSize = 110,
+            text = self.__lettersMap[index],
+            textColor = { white = 1, alpha = 0.3 },
+            fillGradientCenter = { x = 0, y = 0 },
+            textAlignment = 'left',
+            withShadow = true,
+            padding = 0,
         }):alpha(1.0):show()
         :clickActivating(false)
         :canvasMouseEvents(false, false, false, false)
         :draggingCallback(ui.fn.partial(o.onDND, o))
         :mouseCallback(hub.cbForMouseEvents)
         :level(hs.canvas.windowLevels.dock)
-        :wantsLayer(false)
         :behaviorAsLabels({ "canJoinAllSpaces", 'stationary'}))
     return o
 end

@@ -47,10 +47,27 @@ end
 ---@generic T
 ---@param ref T
 ---@return fun(value: T): boolean
+function ui.startsWith(ref)
+    return function(value)
+        return string.sub(value, 1, #ref) == ref
+    end
+end
+
+
+---@generic T
+---@param ref T
+---@return fun(value: T): boolean
 function ui.ne(ref)
     return function (value)
         return value ~= ref
     end
 end
+
+---@generic T
+---@return T
+function ui.partial(fn, ...)
+    return hs.fnutils.partial(fn, ...)
+end
+
 
 return ui

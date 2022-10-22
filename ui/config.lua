@@ -99,4 +99,9 @@ function cfg:count(key, delta)
     return count
 end
 
+---@return string[]
+function cfg:keys()
+    return ui.ifilter(hs.settings.getKeys() or {}, ui.startsWith(self.ns .. '|'))
+end
+
 return cfg

@@ -15,7 +15,7 @@ M.init = M
 ---@return hs.image
 M.thumbnail = function(bundleID)
     local _c = hs.canvas.new(
-        hs.screen.mainScreen():frame():scale(0.125)
+        { w = 276, h = 200 }
     )
     _c[1] = {
         type = 'image',
