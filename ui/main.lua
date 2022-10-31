@@ -45,7 +45,7 @@ function UI:init()
         },
         fillGradientCenter = { x = -1.0, y = -1.0 },
         compositeRule = 'sourceOver',
-    }):level(hs.canvas.windowLevels.floating):wantsLayer(true)
+    })
     self.bg:show()
     self.controller = c:new():start(previewRect)
 

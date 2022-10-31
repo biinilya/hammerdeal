@@ -6,10 +6,13 @@ M.version = "0.1"
 M.author = "http://github.com/biinilya"
 M.license = "MIT - https://opensource.org/licenses/MIT"
 
+M.channel = require('ui.preview.channel')
+M.exchange = require('ui.preview.exchange')
 M.events = require('ui.preview.events')
 M.state = require('ui.preview.state')
 M.window = require('ui.preview.window')
 M.init = M
+M.size = hs.geometry({ w = 276, h = 200 })
 
 ---@param bundleID string
 ---@return hs.image
@@ -64,5 +67,10 @@ M.thumbnailS = function(bundleID)
     }
     return (_c):imageFromCanvas()
 end
+
+M.logo = function(bundleID)
+    return hs.image.imageFromAppBundle(bundleID)
+end
+
 
 return M

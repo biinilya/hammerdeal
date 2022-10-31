@@ -66,8 +66,10 @@ function app:init(appName, layout, app)
     self.state = 'init'
     self.windows = {}
     self.windowsCount = 0
+
     self.screen = ui.preview.state:new()
         :background(ui.preview.thumbnailS(self.bundleID))
+        :logo(ui.preview.logo(self.bundleID))
         :visible(true)
     if self.cfg:get('locked') then
         self.screen:locked(true)
@@ -86,7 +88,7 @@ function app:init(appName, layout, app)
         self.cfg:event('flow')
         self.flowTime:start()
     end)
-    self.snapshotter = hs.timer.new(hs.math.randomFloat()/2 + 1, ui.fn.partial(self.doSnapshot, self), true)
+    self.snapshotter = hs.timer.new(0.5 + hs.math.randomFloat(), ui.fn.partial(self.doSnapshot, self), true)
     self.transitions = {
         ['init->started'] = function()
             self.transitions['init->starting']()
@@ -141,6 +143,10 @@ function app:init(appName, layout, app)
                     self.cfg:set('layout', currentLayout)
                     autoLayout = currentLayout
                 end
+                --local focusWindow = hs.window.focusedWindow()
+                --hs.window.tiling.tileWindows(
+                --    {focusWindow},
+                --    self.layout.workspace, ui.preview.size.aspect, false, true, 0):apply()
                 checkLayout:start()
             end):start()
             self.flowTime:start()
@@ -174,7 +180,7 @@ function app:changeStatusTo(status, appObject)
     else
         self.log.wf('Ignored transition [%s]', transition)
     end
-    if appObject ~= nil then 
+    if appObject ~= nil then
         self.hsApp = appObject
     end
 
@@ -241,6 +247,16 @@ function app:activate()
             break
         end
     end
+    local appAlive = self.hsApp:isRunning()
+    if not appAlive then
+        self:changeStatusTo('stopped', self.hsApp)
+        local restarted = hs.application.launchOrFocus(self.name)
+        if not restarted then
+            self.log.ef('Failed to restart app [%s]', self.name)
+            return
+        end
+        return
+    end
     if w ~= nil then
         if self.hsApp:isHidden() then
             self.hsApp:unhide()
@@ -250,16 +266,12 @@ function app:activate()
         w:focus()
         return
     end
-    if not self.hsApp:isRunning() then
-        hs.application.open(self.name)
-        return
-    end
     for _, w in ipairs(self.hsApp:allWindows()) do
         w:unminimize()
     end
     self.hsApp:activate(true)
-    hs.eventtap.keyStroke({ 'cmd' }, 'N')
-    hs.eventtap.keyStroke({ 'cmd' }, 'T')
+    --hs.eventtap.keyStroke({ 'cmd' }, 'N')
+    --hs.eventtap.keyStroke({ 'cmd' }, 'T')
 
 end
 
@@ -281,12 +293,13 @@ function app:doSnapshot()
     if not w then
         return
     end
-    if w:isMinimized() then w:unminimize() end
     if not self.screen then return end
 
-    self.screen:background(w:snapshot()):apply()
-
-    collectgarbage('step')
+    local s = w:snapshot(true)
+    if s ~= nil then
+        s:setSize({ w = 276, h = 200 }, true)
+        self.screen:background(s):apply()
+    end
 end
 
 return app

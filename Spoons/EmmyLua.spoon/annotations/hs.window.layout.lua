@@ -19,7 +19,7 @@
 --   - `move`: moves the window(s) to a specified onscreen rect (if the action is omitted, `move` is assumed)
 --   - `minimize`, `maximize`, `fullscreen`
 --   - `tile`, `fit`: tiles the windows onto a specified rect, using `hs.window.tiling.tileWindows()`; for `fit`, the
---     `preserveRelativeArea` parameter will be set to true
+--     `preserveRelativeArea` parameter ill be set to true
 --   - `hide`, `unhide`: hides or unhides the window's application (like when using cmd-h)
 --   - `noaction`: skip action on the window(s)
 -- * a **maxn** number, indicating how many windows from this rule's window pool will be affected (at most) by this command;

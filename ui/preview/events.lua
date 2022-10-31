@@ -1,91 +1,245 @@
+---@class action
+---@field triggered boolean
+local action = {}
+action.__index = action
+action.__name = 'action'
+
+function action.new()
+    local o = {
+        triggered = false
+    }
+    setmetatable(o, action)
+    return o
+end
+
+function action:doOnce(actor)
+    if self.triggered then
+        return
+    end
+    self.triggered = true
+    actor()
+end
+
+---@class stateController
+---@field elements table<string, hs.watchable>
+---@field before hs.watchable
+---@field latest hs.watchable
+---@field focused hs.watchable
+---@field selected hs.watchable
+---@field beingDragged hs.watchable
+---@field selectionLostTimer hs.timer.delayed
+---@field draggingTimer hs.timer.delayed
+local canvasController = {}
+canvasController.__index = canvasController
+canvasController.__name = 'stateController'
+
+local function repr(...)
+    return hs.inspect.inspect({ ... }, { newline = '', indent = '' })
+end
+
+---@param hub ui.preview.events.hub
+function canvasController.new(pathMask)
+    local o = {}
+    setmetatable(o, canvasController)
+
+    o.elements = {}
+    o.elementsPrivate = {}
+    o.pathMask = pathMask
+    o.selectionLostTimer = hs.timer.delayed.new(2, function() o:onSelectionLost() end)
+    o.draggingTimer = nil
+    return o
+end
+
+---@param canvas hs.canvas
+---@param eventType string
+---@param elementId string
+---@param x number
+---@param y number
+function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
+    local state = self.elements[elementId]
+    if state == nil then
+        self.elementsPrivate[elementId] = self.elementsPrivate[elementId] or {}
+        self.elementsPrivate[elementId].listenForFocusUpdates = hs.watchable.watch(
+            string.format(self.pathMask, elementId), 'isFocused',
+            function(watcher, path, key, old, new)
+                if new == true then
+                    for element, state in pairs(self.elements) do
+                        if element ~= elementId then
+                            self.elements[element].isFocused = false
+                        end
+                    end
+                end
+            end
+        )
+        state = hs.watchable.new(string.format(self.pathMask, elementId), true)
+        state.id = elementId
+        state.canvas = canvas
+        state.isFocused = false
+        state.isLocked = false
+        state.isSelected = false
+        state.isDragged = false
+        state.actionRequested = nil
+        state.cursorLocation = nil
+        state.dropTarget = nil
+        state.latestEvents = {}
+        self.elements[elementId] = state
+    end
+
+    self.before = self.latest
+    self.latest = state
+    state.latestEvents[eventType] = { hs.timer.absoluteTime(), canvas, elementId, x, y }
+
+    --- cursor management
+    state.cursorLocation = { x, y }
+    if self.before ~= nil and  state.id ~= self.before.id then
+        self.before.cursorLocation = nil
+    end
+
+    --- selection management
+    if eventType ~= 'mouseExit' then
+        self:ensureFocused(state)
+    end
+
+
+    --- selection management
+    if eventType ~= 'mouseExit' then
+        self:ensureFocused(state)
+    end
+
+    --- drag management
+    if eventType == 'mouseDown' then
+        self.draggingTimer = hs.timer.delayed.new(2, function() self:onDraggingStart(state) end):start()
+    end
+    if eventType == 'mouseUp' then
+        self:onDraggingCancel()
+    end
+
+
+    return self._state
+end
+
+
+function canvasController:ensureFocused(who)
+    who.isSelected = true
+    if self.selected ~= nil and self.selected.id ~= who.id then
+        self:onSelectionLost()
+    end
+    self.selected = who
+    self.selectionLostTimer:start()
+end
+
+function canvasController:onSelectionLost()
+    if self.selected ~= nil then
+        self.selected.isSelected = false
+    end
+    self.selected = nil
+end
+
+function canvasController:onDraggingCancel()
+    self.draggingTimer:stop()
+    if hs.timer.absoluteTime() - self.latest.latestEvents['mouseDown'][1] < 0.5*1e9 then
+        self.latest.actionRequested = action.new()
+        return
+    end
+end
+
+function canvasController:onDraggingStart(who)
+    self.beingDragged = who
+    who.isDragged = true
+    who.refreshCursorPosition = hs.timer.doEvery(0.05, function()
+        local loc = hs.mouse.getRelativePosition()
+        who.cursorLocation = { loc.x, loc.y }
+    end)
+end
+
 ---@class ui.preview.events.hub
 local hub = {}
 hub.__index = hub
 hub.__name = 'hub'
----@type fun(canvas: hs.canvas, eventType: string, elementId: any, x: number, y: number)
-hub.cbForMouseEvents = nil
----@type hs.logger
-hub.log = nil
 
 ---@return ui.preview.events.hub
-function hub:new(tag, loglevel)
+function hub.new(id, tag, loglevel)
     local o = {}
+    setmetatable(o, hub)
 
+    o.id = id
     o.log = hs.logger.new(tag or 'ui.preview.events.hub', loglevel or 'warning')
-    o.cbForMouseEvents = function(canvas, eventType, elementId, x, y)
-        o:dispatch(elementId)(eventType, x, y)
-    end
+    o.state = hs.watchable.new('X:['..id..']:>', true)
+    o.pathMask = 'X:['.. id .. '/%s]:>'
+    o.ctrl = canvasController.new(o.pathMask)
 
-    setmetatable(o, self)
     return o
 end
 
-function hub:dispatch(elementId)
-    if self:handlers()[elementId] == nil then
-        self.log.wf('No handler for elementId: %s', elementId)
-        return function(_, _, _) end
-    else
-        return function(eventType, x, y)
-            if #self:handlers()[elementId] == 0 then
-                self.log.wf('Empty handler set for elementId: %s', elementId)
-            end
-            hs.fnutils.each(self:handlers()[elementId], function(handler)
-                self.log.df('processing event <elementId: %s, eventType: %s', elementId, eventType)
-                handler(eventType, x, y)
-            end)
+---@return fun(canvas: hs.canvas, eventType: string, elementId: string, x: number, y: number)
+function hub:cbForMouseEvents(elementIdOverride)
+    local function callback(canvas, eventType, elementId, x, y)
+        if elementIdOverride ~= nil then
+            elementId = elementIdOverride
         end
+        self.state[eventType] = { hs.timer.absoluteTime(), canvas, elementId, x, y }
+        self.ctrl:onMouseEvent(canvas, eventType, elementId, x, y)
     end
+
+    return callback
 end
 
----@return table<string, fun(event_type:string, x:number, y:number)[]>>
-function hub:handlers()
-    if self.__handlers == nil then
-        self.__handlers = {}
-    end
-    return self.__handlers
-end
 
----@class ui.preview.events.watcher
-local watcher = {}
-watcher.__index = watcher
-watcher.__name = 'watcher'
+---@class ui.preview.events.observer
+local observer = {}
+observer.__index = observer
+observer.__name = 'watcher'
 
 ---@param elementIds string[]
----@return ui.preview.events.watcher
+---@return ui.preview.events.observer
 function hub:attach(elementIds)
     local o = {}
-    o.elementId = elementId
+    o.elementIds = elementIds
     o.ctx = {}
+    o.log = hs.logger.new('ui.preview.events.observer', 'debug')
+
     o.config = {
         tapTimeout = 0.2,
         longTapTimeout = 0.7,
     }
 
-    setmetatable(o, watcher)
+    setmetatable(o, observer)
     o:hooks({
-        onSessionBegin = function() end,
-        onSessionEnd = function() end,
-        onTap = function() end,
-        onLongTap = function() end,
-        onClick = function() end,
-        onDoubleClick = function() end,
-        onDrag = function() end,
-        onMoveBegin = function() end,
-        onMoveEnd = function() end,
+        onFocusLost = function(ctx) o.log.d("onSessionBegin") end,
+        onSessionBegin = function(ctx) o.log.d("onSessionBegin") end,
+        onSessionEnd = function(ctx) o.log.d("onSessionEnd") end,
+        onTap = function(ctx) o.log.d("onTap") end,
+        onLongTap = function(ctx) o.log.d("onLongTap") end,
+        onClick = function(ctx) o.log.d("onClick") end,
+        onDoubleClick = function(ctx) o.log.d("onDoubleClick") end,
+        onDrag = function(ctx) o.log.d("onDrag") end,
+        onMoveBegin = function(ctx) o.log.d("onMoveBegin") end,
+        onMoveEnd = function(ctx) o.log.d("onMoveEnd") end,
+
+        doFocus = function(elementId) self[elementId]:change('isFocused', true) end,
     })
-    o:actionMap({
-        mouseEnter = function(x, y) end,
-        mouseExit = function(x, y) end,
-        mouseUp = function(x, y) end,
-        mouseDown = function(x, y) end,
-    })
+
     hs.fnutils.each(elementIds, function(elementId)
-        if self:handlers()[elementId] == nil then
-            self:handlers()[elementId] = {}
-        end
-        table.insert(self:handlers()[elementId], function(eventType, x, y) return o:onMouse(eventType, x, y) end)
+        local ctx = {}
+        self[elementId] = hs.watchable.watch(string.format(self.pathMask, elementId), '*',function(watcher, path, key, old, new)
+            self.log.df("%s %s; [%s] => [%s]", path, key, repr(old), repr(new))
+            if key == 'isSelected' then
+                if new then
+                    o:hooks().onSessionBegin(ctx)
+                else
+                    o:hooks().onSessionEnd(ctx)
+                end
+            end
+            if key == 'isFocused' then
+                if new == false then
+                    o:hooks().onFocusLost(ctx)
+                end
+            end
+            if key == 'actionRequested' then
+                new:doOnce(function() o:hooks().onClick(ctx) end)
+            end
+        end)
     end)
-    o:idle()
 
     return o
 end
@@ -94,7 +248,7 @@ end
 
 ---@param newActionMap { [string]: fun(x: integer, y: integer) }
 ---@return { [string]: fun(x: integer, y: integer) }
-function watcher:actionMap(newActionMap)
+function observer:actionMap(newActionMap)
     if newActionMap ~= nil then
         self.__actionMap = newActionMap
     end
@@ -105,7 +259,7 @@ function watcher:actionMap(newActionMap)
 end
 
 ---@param { [string]: fun() }
-function watcher:hook(name, fn)
+function observer:hook(name, fn)
     if self.__hooks == nil then
         self.__hooks = {}
     end
@@ -115,7 +269,7 @@ end
 
 ---@param h { [string]: fun() }
 ---@return { [string]: fun() }
-function watcher:hooks(h)
+function observer:hooks(h)
     if h ~= nil then
         self.__hooks = h
         return self
@@ -126,62 +280,16 @@ function watcher:hooks(h)
     return self.__hooks
 end
 
-function watcher:start()
+function observer:start()
     --self:resume()
     return self
 end
 
-function watcher:stop()
+function observer:stop()
     --self:reset()
     --self:idle()
     --self:pause()
     return self
-end
-
-function watcher:reset()
-    self.ctx = {}
-    self:actionMap({
-        mouseEnter = function(x, y) self:reset() end,
-        mouseExit = function(x, y) self:reset() end,
-        mouseMouseUp = function(x, y) self:reset() end,
-        mouseDown = function(x, y) self:reset() end,
-    })
-    return self
-end
-
-function watcher:idle()
-    self:reset()
-    self:actionMap().mouseEnter = function(x, y)
-        self.ctx.status = 'idle'
-        self.ctx.x = x
-        self.ctx.y = y
-        self.ctx.timer = hs.timer.doAfter(self.config.tapTimeout, function()
-            self.ctx.status = 'tap'
-            self:hooks().onTap(self.ctx)
-            self.ctx.timer = hs.timer.doAfter(self.config.longTapTimeout, function()
-                self.ctx.status = 'longTap'
-                self:hooks().onLongTap(self.ctx)
-            end)
-        end)
-
-        self:actionMap().mouseDown = function(_, _)
-            self.ctx.status = 'click'
-            self:hooks().onClick(self.ctx)
-        end
-
-        self:hooks().onSessionBegin(self.ctx)
-        self:actionMap().mouseExit = function(_, _)
-            self.ctx.timer:stop()
-            self:hooks().onSessionEnd(self.ctx)
-        end
-    end
-
-    return self
-end
-
-function watcher:onMouse(eventType, x, y)
-    if self:actionMap()[eventType] == nil then  return end
-    self:actionMap()[eventType](x, y)
 end
 
 return hub

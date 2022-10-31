@@ -6,35 +6,44 @@
 ---@field preOrdered ui.preview.state[]
 ---@field workspace hs.geometry
 ---@field private canvas hs.canvas
+---@field private canvas2 hs.canvas
 local layout = {}
 layout.__index = layout
 layout.__name = 'layout'
-layout.log = hs.logger.new('layout', 'debug')
+layout.log = hs.logger.new('layout', 'info')
 
 ---@return ui.control.layout
 function layout:new(numCells)
     local o = {}
     setmetatable(o, self)
+    self.workspace = hs.geometry('[16,5,97,97]'):fromUnitRect(ui.screen)
     return o:init(numCells)
 end
 
+function snap()
+end
+
 function layout:init(numCells)
-    self.updater = hs.timer.doEvery(1, function()
-        self:reorder()
-    end):start()
     self.gates = {}
     self.connections = {}
-    self.canvas = hs.canvas.new(ui.screen)
+    self.preOrdered = {}
+    self.dirty = false
+    self.hub = ui.events.new('root', 'window', 'debug')
+
+    local function makeCanvas(events)
+        local frame = hs.geometry('[0,5,15,97]'):fromUnitRect(ui.screen)
+        local gates = {}
+
+        local canvas = hs.canvas.new(frame)
         :appendElements(
             {
                 type = "image",
                 action = "fill",
                 image = hs.image.imageFromPath(hs.configdir .. '/bg.png'),
-                imageAlpha = 0.5,
+                imageAlpha = 0.4,
                 imageScaling = 'scaleToFit',
             }, {
                 type = "rectangle",
-                action = "fill",
                 fillColor = { white = 0.1, alpha = 0.7 },
                 frame = { x = "0%", y = "0%", h = "100%", w = "100%" },
                 padding = 0,
@@ -50,41 +59,42 @@ function layout:init(numCells)
                 fillGradientCenter = { x = -1.0, y = -1.0 },
             }
         )
-        :level(hs.canvas.windowLevels.desktopIcon)
-        :clickActivating(false)
-        :behavior({
-            hs.canvas.windowBehaviors.transient,
-            hs.canvas.windowBehaviors.canJoinAllSpaces,
-            hs.canvas.windowBehaviors.fullScreenAuxiliary
+        :behaviorAsLabels({
+            "transient",
+            "canJoinAllSpaces",
+            "ignoresCycle",
+            "fullScreenAuxiliary",
+            "fullScreenAllowsTiling"
         })
-        :alpha(1.0)
+        :clickActivating(false)
+        :canvasMouseEvents(false, false, false, false)
+        :alpha(0.5)
         :wantsLayer(true)
-        :show()
 
-    self.workspace = hs.geometry('[15,5,95,97]'):fromUnitRect(ui.screen)
 
-    ---@type hs.geometry
-    local workspace = hs.geometry.copy(self.workspace)
-    workspace.x, workspace.w, workspace.h = 0, workspace.x, workspace.h/8
-    for i = 1, numCells do
-        local cell = hs.geometry.copy(hs.geometry(workspace))
-        cell.y = cell.y + (cell.h * (i - 1))
-        -- local unitCell = {
-            -- x = tostring(math.floor(10000 * cell.x / ui.screen.w)/100)..'%',
-            -- y = tostring(math.floor(10000 * cell.y / ui.screen.h)/100)..'%',
-            -- w = tostring(math.floor(10000 * cell.w / ui.screen.w)/100)..'%',
-            -- h = tostring(math.floor(10000 * cell.h / ui.screen.h)/100)..'%'
-        -- }
-        -- print(hs.inspect.inspect(unitCell))
+        ---@type hs.geometry
+        local workspace = hs.geometry.copy(self.workspace)
+        workspace.x, workspace.w, workspace.h = canvas:frame().x, workspace.x, workspace.h / 8
+        for i = 1, numCells do
+            local cell = hs.geometry.copy(hs.geometry(workspace))
+            cell.y = cell.y + (cell.h * (i - 1))
+            cell.w = cell.h * ui.preview.size.aspect
 
-        self.gates[i] = ui.preview.window:new(cell, i)
-        -- self.canvas:appendElements({
-            -- type = 'canvas',
-            -- action = 'fill',
-            -- canvas = self.gates[i]:canvas(),
-            -- frame = unitCell,
-        -- })
+
+            local id = i
+            local gate = ui.preview.window:new(id, self.hub, {x=cell.x, y=cell.y, w=cell.w, h=cell.h})
+            gate:show()
+            gates[i] = gate
+        end
+        return canvas, gates
     end
+    self.canvas, self.gates = makeCanvas()
+    self.canvas:show():level(hs.canvas.windowLevels.dock)
+
+    self.updater = hs.timer.doEvery(1, function()
+        self:reorder()
+    end, true):start()
+
     return self
 end
 
@@ -93,13 +103,17 @@ end
 ---@param cfg ui.cfg
 function layout:attach(id, state, cfg)
     self.log.df('new connection, %s', id)
-    self.connections[id] = {state = state, cfg = cfg}
+    self.connections[id] = { state = state, cfg = cfg }
+    self:reorder()
+    self.dirty = true
 end
 
 ---@param id string
 function layout:detach(id)
     self.log.df('connection\'s gone, %s', id)
     self.connections[id] = nil
+    self:reorder()
+    self.dirty = true
 end
 
 function layout:cellSize()
@@ -140,15 +154,20 @@ function layout:reorder()
         return compare(f1, f2)
     end)
 
-    for i, gate in ipairs(self.gates) do
-        local linkedTo = preOrdered[i]
-        if linkedTo == nil then
-            gate:state(ui.preview.state:new())
-        elseif gate:state().id ~= linkedTo.state.id then
-            gate:state(linkedTo.state)
+    self.preOrdered = preOrdered
+    local function remap(gates)
+        for i, gate in ipairs(gates) do
+            local linkedTo = self.preOrdered[i]
+            if linkedTo == nil then
+                gate:state(ui.preview.state:new())
+            elseif gate:state().id ~= linkedTo.state.id then
+                gate:state(linkedTo.state)
+            end
+            gate:apply()
         end
-        gate:apply()
     end
+
+    remap(self.gates)
 end
 
 return layout

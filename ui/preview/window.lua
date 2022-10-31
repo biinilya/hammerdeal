@@ -4,15 +4,15 @@ local preview = {}
 preview.__index = preview
 preview.__name = 'preview'
 preview.__digitsMap = { '①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⓪' }
-preview.__lettersMap = {'🅐','🅑','🅒','🅓','🅔','🅕','🅖','🅗','🅘','🅙','🅚','🅛','🅜','🅝','🅞','🅟','🅠','🅡','🅢','🅣','🅤','🅥','🅦','🅧','🅨','🅩'}
+preview.__lettersMap = { '🅐', '🅑', '🅒', '🅓', '🅔', '🅕', '🅖', '🅗', '🅘', '🅙', '🅚', '🅛',
+    '🅜', '🅝', '🅞', '🅟', '🅠', '🅡', '🅢', '🅣', '🅤', '🅥', '🅦', '🅧', '🅨', '🅩' }
 
 ---@param s ui.preview.state | nil
 ---@return ui.preview.state | ui.preview.window
 function preview:state(s)
     if s ~= nil then
-        if self._state ~= nil then self._state.__onUpgrade = function() end end
-        s.__onUpgrade = function()
-            self:apply()
+        if self._state ~= nil then
+
         end
         self._state = s
         return self
@@ -85,7 +85,7 @@ function preview:onDND(canvas, event, details)
         -- could inspect details and reject with `return false`
         -- but we're going with the default of true
         canvas:elementAttribute(1, 'action', 'skip')
-        canvas:elementAttribute(3, 'action', 'fill')
+        canvas:elementAttribute(2, 'action', 'fill')
         self.delayedClick:start()
         return true
 
@@ -95,7 +95,7 @@ function preview:onDND(canvas, event, details)
         -- return type ignored
 
         canvas:elementAttribute(1, 'action', 'fill')
-        canvas:elementAttribute(3, 'action', 'skip')
+        canvas:elementAttribute(2, 'action', 'skip')
         self.delayedClick:stop()
         -- the drag finished -- it was released on us!
 
@@ -103,71 +103,77 @@ function preview:onDND(canvas, event, details)
         local name = details.pasteboard
         hs.pasteboard.writeAllData(nil, hs.pasteboard.readAllData(name))
         canvas:elementAttribute(1, 'action', 'fill')
-        canvas:elementAttribute(3, 'action', 'skip')
+        canvas:elementAttribute(2, 'action', 'skip')
         self.delayedClick:stop()
     end
 end
 
 ---@param previewArea hs.geometry
 ---@param index number
+---@param hub ui.preview.events.hub
 ---@return ui.preview.window | ui.preview.window
-function preview:new(previewArea, index)
+function preview:new(id, hub, previewArea)
     ---@type ui.preview.window
     local o = {}
     setmetatable(o, self)
-
-    local hub = require 'ui.preview.events':new('ui.preview.window', 'info')
 
     o.delayedClick = hs.timer.delayed.new(1.0, function()
         o:state():hooks().onClick()
     end)
 
-    o
-    :previewEvents(
-        hub:attach({'background'})
-            :hook('onSessionBegin', function(ctx)
-                o:apply(o:state():highlighted(true))
-            end)
-            :hook('onSessionEnd', function()
-                o:apply(o:state():highlighted(false))
-            end)
-            :hook('onLongTap', function()
-            end)
-            :hook('onClick', function()
-                if hs.eventtap.checkKeyboardModifiers().alt then
-                    o:toggleLock()
-                else
-                    o:onClickedHook()()
-                end
-            end)
-        :start())
+    o:previewEvents(
+        hub:attach({ id .. '/thumbnail' })
+        :hook('onMoveBegin', function(ctx)
+            ctx.canvas = hs.drawing.image(o:canvas():frame(), o:canvas():imageFromCanvas()):show()
+        end)
+        :hook('onMoveEnd', function(ctx)
+            ctx.canvas:setTopLeft(hs.mouse.getRelativePosition()):hide()
+        end)
+        :hook('onDrag', function(ctx)
+            ctx.canvas:setTopLeft(hs.mouse.getRelativePosition())
+        end)
+        :hook('onClick', function()
+            if hs.eventtap.checkKeyboardModifiers().alt then
+                o:toggleLock()
+            else
+                o:state():focused(true)
+                o:previewEvents():hooks()['doFocus'](id .. '/thumbnail')
+                o:apply()
+                o:onClickedHook()()
+            end
+            return false
+        end)
+        :hook('onTap', function(ctx)
+            return true
+        end)
+        :hook('onSessionBegin', function(ctx)
+            o:state():highlighted(true)
+            o:apply()
+            return true
+        end)
+        :hook('onSessionEnd', function(ctx)
+            o:state():highlighted(false)
+            o:apply()
+            return true
+        end)
+        :hook('onFocusLost', function(ctx)
+            o:state():focused(false)
+            o:apply()
+            return true
+        end)
+        :start()
+    )
     :rState(ui.preview.state:new())
     :state(ui.preview.state:new())
-    :canvas(hs.canvas.new(previewArea):appendElements({
+        :canvas(hs.canvas.new(previewArea):appendElements({
             type = 'image',
             action = 'fill',
-            id = 'background',
             image = o:rState():background(),
             imageAlignment = 'left',
             imageAlpha = 1,
-            trackMouseEnterExit = true,
-            trackMouseDown = true,
-            trackMouseUp = true,
-            antialias = false,
-            trackMouseMove = false,
             withShadow = true,
-            padding=5,
-        }, {
-            type = 'rectangle',
-            action = 'skip',
-            fillGradient = 'radial',
-            fillGradientColors = {
-                { white=1, alpha = 0.5 },
-                { white=1, alpha = 0.0 },
-            },
-            fillGradientCenter = { x=0, y=0 },
-            withShadow = false,
             padding = 5,
+            antialias = false,
         }, {
             type = 'text',
             action = 'skip',
@@ -179,22 +185,21 @@ function preview:new(previewArea, index)
             withShadow = true,
             padding = 5,
         }, {
-            type = 'text',
+            type = 'rectangle',
             action = 'skip',
-            textSize = 110,
-            text = self.__lettersMap[index],
-            textColor = { white = 1, alpha = 0.3 },
-            fillGradientCenter = { x = 0, y = 0 },
-            textAlignment = 'left',
-            withShadow = true,
-            padding = 0,
-        }):alpha(1.0):show()
+            strokeColor = { white = 1, alpha = 0.5 },
+            strokeWidth = 5,
+        }):alpha(1.0)
         :clickActivating(false)
-        :canvasMouseEvents(false, false, false, false)
-        :draggingCallback(ui.fn.partial(o.onDND, o))
-        :mouseCallback(hub.cbForMouseEvents)
+        :canvasMouseEvents(true, true, true, false)
+        :mouseCallback(hub:cbForMouseEvents(id .. '/thumbnail'))
         :level(hs.canvas.windowLevels.dock)
-        :behaviorAsLabels({ "canJoinAllSpaces", 'stationary'}))
+        :draggingCallback(ui.fn.partial(o.onDND, o))
+        :wantsLayer(false)
+        :behaviorAsLabels({
+            "transient",
+            "canJoinAllSpaces",
+        }):show())
     return o
 end
 
@@ -202,33 +207,33 @@ function preview:apply(remoteState)
     if remoteState == nil then
         remoteState = self:state()
     end
-    if self:rState():background() ~= remoteState:background()  then
+    if self:rState():background() ~= remoteState:background() then
         self:canvas():elementAttribute(1, 'image', remoteState:background())
-        ---@diagnostic disable-next-line: param-type-mismatch
         self:rState():background(remoteState:background())
-    end
-    if self:rState():shifted() ~= remoteState:shifted() then
-        self:canvas():elementAttribute(1, 'imageAlignment', remoteState:shifted() and 'right' or 'left')
-        self:canvas():elementAttribute(2, 'frame', self:canvas():elementBounds(1))
-    end
-    if self:rState():locked() ~= remoteState:locked() then
         ---@diagnostic disable-next-line: param-type-mismatch
+    end
+    if  self:rState():locked() ~= remoteState:locked() or
+        self:rState():focused() ~= remoteState:focused()
+    then
+        local l = self:canvas():topLeft()
+        l.x = 0
+        if remoteState:locked() then l.x = 50 end
+        if remoteState:focused() then l.x = 100 end
+        self:canvas():topLeft(l)
+        --self:canvas():elementAttribute(2, 'frame', self:canvas():elementBounds(1))
         self:rState():locked(remoteState:locked())
-    end
-    if self:rState():focused() ~= remoteState:focused() then
-        ---@diagnostic disable-next-line: param-type-mismatch
         self:rState():focused(remoteState:focused())
     end
     if self:rState():highlighted() ~= remoteState:highlighted() then
-        self:canvas():elementAttribute(2, 'action', remoteState:highlighted() and 'fill' or 'skip')
+        self:canvas():elementAttribute(3, 'action', remoteState:highlighted() and 'stroke' or 'skip')
         ---@diagnostic disable-next-line: param-type-mismatch
         self:rState():highlighted(remoteState:highlighted())
     end
     if self:rState():visible() ~= remoteState:visible() then
         if remoteState:visible() then
-            self:canvas():show(0.5)
+            self:canvas():elementAttribute(1, 'action', 'fill')
         else
-            self:canvas():hide(0.5)
+            self:canvas():elementAttribute(1, 'action', 'skip')
         end
         ---@diagnostic disable-next-line: param-type-mismatch
         self:rState():visible(remoteState:visible())

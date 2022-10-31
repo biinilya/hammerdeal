@@ -1,5 +1,5 @@
---require('mobdebug').start()
-require('ui')
+  --require('mobdebug').start()
+ require('ui')
 
-App = ui.control.broker:new()
-App:start()
+ App = ui.control.broker:new()
+ App:start()

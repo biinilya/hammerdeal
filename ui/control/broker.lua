@@ -29,6 +29,7 @@ function broker:new()
             if w == nil then return false end
             if w:isMinimized() then return false end
             if w:isMaximizable() then return false end
+            if w:subrole() == 'AXSystemDialog.Hammerspoon' then return true end
 
             ---@type hs.geometry
             local size = w:frame()
@@ -51,33 +52,42 @@ end
 
 ---@return ui.control.broker
 function broker:start()
+    self.__bbcLife:start()
     for _, app in pairs(hs.application.runningApplications()) do
         if app:kind() == 1 then
             self:processAppEvent(app:title(), hs.application.watcher.launched, app)
             for _, w in ipairs(app:allWindows()) do
-                self:processWindowEvent(app:name(), hs.window.filter.windowAllowed, w)
+                self:processWindowEvent(app:title(), hs.window.filter.windowAllowed, w)
             end
         end
     end
-    self.__bbcLife:start()
-    local f = self.__layout.workspace:toUnitRect(ui.desktop):fromUnitRect(ui.screen)
-    local rule = string.format('mov all foc [%d,%d,%d,%d] 0,0',
-        math.ceil(f.x * 100 / ui.screen.w),
-        math.ceil(f.y * 100 / ui.screen.h),
-        math.ceil((f.x + f.w) * 100 / ui.screen.w),
-        math.ceil((f.y + f.h) * 100 / ui.screen.h)
-    )
 
-    hs.window.layout.new({
-        { self.__bbcNew, 'noaction' },
-        { self.__bbcWorld, rule },
-    }, 'bbcworld', 'info'):start()
     self.__bbcWorld:subscribe({
         hs.window.filter.windowFocused, hs.window.filter.windowUnfocused,
         hs.window.filter.windowAllowed, hs.window.filter.windowRejected,
     }, function(w, appName, event)
         self:processWindowEvent(appName, event, w)
-    end, true)
+    end)
+
+    local f = self.__layout.workspace:toUnitRect(ui.desktop):fromUnitRect(ui.screen)
+    local rect = {
+        math.ceil(f.x * 100 / ui.screen.w),
+        math.ceil(f.y * 100 / ui.screen.h),
+        math.ceil((f.x + f.w) * 100 / ui.screen.w),
+        math.ceil((f.y + f.h) * 100 / ui.screen.h)
+    }
+
+    local rule = string.format('mov 3 foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
+    local rule2 = string.format('mov all foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
+
+
+    hs.window.layout.new({
+        { self.__bbcNew, 'noaction' },
+        { self.__bbcWorld, rule .. '|' .. rule2 },
+    }, 'bbcworld', 'info'):start()
+
+
+
     -- self.__bbcWorld:subscribe({hs.window.filter.windowRejected}, function(w, appName, event)
     --     self:onWindowClose(w, appName)
     -- end, true)
@@ -122,25 +132,23 @@ end
 function broker:processWindowEvent(appName, eventType, windowObject)
     if windowObject.role == 'AXScrollArea' then return end
 
-    if eventType == hs.window.filter.windowRejected then
-        ---@type ui.control.app
-        local app = self.__units[appName]
-        app:deregisterWindow(windowObject)
-        return
-    end
-
     ---@type hs.application | nil
     local appObject = windowObject:application()
     if appObject == nil then
         appObject = hs.application.get(appName)
     end
 
+    if eventType == hs.window.filter.windowRejected then
+        self:processAppEvent(appName, hs.application.watcher.deactivated, appObject):deregisterWindow(windowObject)
+        return
+    end
+
     if eventType == hs.window.filter.windowAllowed then
-        self.__units[appName]:registerWindow(windowObject)
+        self:processAppEvent(appName, hs.application.watcher.launched, appObject):registerWindow(windowObject)
     end
 
     if eventType == hs.window.filter.windowFocused then
-        self.__units[appName]:focusWindow(windowObject)
+        self:processAppEvent(appName, hs.application.watcher.focused, appObject):focusWindow(windowObject)
     end
 end
 

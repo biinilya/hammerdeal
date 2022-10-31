@@ -6,7 +6,6 @@ local _closeImg = hs.image.imageFromPath(hs.configdir .. "/lock.png")
 
 ---@class ui.preview.state
 ---@field id string
----@field __onUpgrade fun()
 local state = {}
 state.__index = state
 state.__name = 'state'
@@ -14,7 +13,6 @@ state.__name = 'state'
 ---@type hs.geometry
 local workspace = hs.geometry { 0.15, 0.05, 0.80, 0.90 }
 local filler = hs.canvas.new({ w = 276, h = 200 }):appendElements({
-
     type = "rectangle",
     action = "fill",
     fillColor = { white = 0.1, alpha = 0.0 },
@@ -27,7 +25,6 @@ local filler = hs.canvas.new({ w = 276, h = 200 }):appendElements({
 function state:new()
     local o = {}
     setmetatable(o, self)
-    o.__onUpgrade = function() end
     o.id = hs.host.uuid()
 
     return o
@@ -40,7 +37,6 @@ function state:new()
 end
 
 function state:apply()
-    self.__onUpgrade()
     return self
 end
 
@@ -123,6 +119,16 @@ function state:background(f)
         return self
     end
     return self._background
+end
+
+---@param f hs.image | nil
+---@return hs.image | ui.preview.state
+function state:logo(f)
+    if f ~= nil then
+        self._logo = f
+        return self
+    end
+    return self._logo
 end
 
 ---@return table<string, fun()>
