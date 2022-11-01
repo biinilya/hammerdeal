@@ -82,6 +82,7 @@ function preview:onDND(canvas, event, details)
         -- could inspect details and reject with `return false`
         -- but we're going with the default of true
         canvas:elementAttribute(1, 'action', 'skip')
+        canvas:elementAttribute(4, 'action', 'skip')
         canvas:elementAttribute(2, 'action', 'fill')
         self.delayedClick:start()
         return true
@@ -92,6 +93,7 @@ function preview:onDND(canvas, event, details)
         -- return type ignored
 
         canvas:elementAttribute(1, 'action', 'fill')
+        canvas:elementAttribute(4, 'action', 'fill')
         canvas:elementAttribute(2, 'action', 'skip')
         self.delayedClick:stop()
         -- the drag finished -- it was released on us!
@@ -100,6 +102,7 @@ function preview:onDND(canvas, event, details)
         local name = details.pasteboard
         hs.pasteboard.writeAllData(nil, hs.pasteboard.readAllData(name))
         canvas:elementAttribute(1, 'action', 'fill')
+        canvas:elementAttribute(4, 'action', 'fill')
         canvas:elementAttribute(2, 'action', 'skip')
         self.delayedClick:stop()
     end
@@ -121,13 +124,13 @@ function preview:new(id, hub, previewArea)
     o:previewEvents(
         hub:attach({ id .. '/thumbnail' })
         :hook('onMoveBegin', function(ctx)
-            ctx.canvas = hs.drawing.image(o:canvas():frame(), o:canvas():imageFromCanvas()):show()
+            ctx.avatar = hs.drawing.image(o:canvas():frame(), o:canvas():imageFromCanvas()):show()
         end)
         :hook('onMoveEnd', function(ctx)
-            ctx.canvas:setTopLeft(hs.mouse.getRelativePosition()):hide()
+            ctx.avatar:setTopLeft(hs.mouse.getRelativePosition()):hide()
         end)
         :hook('onDrag', function(ctx)
-            ctx.canvas:setTopLeft(hs.mouse.getRelativePosition())
+            ctx.avatar:setTopLeft(hs.mouse.getRelativePosition())
         end)
         :hook('onClick', function()
             if hs.eventtap.checkKeyboardModifiers().alt then
@@ -152,6 +155,12 @@ function preview:new(id, hub, previewArea)
             o:state():highlighted(false)
             o:apply()
             return true
+        end)
+        :hook('onDropBegin', function(ctx)
+            o:onDND(o:canvas(), 'enter', ctx)
+        end)
+        :hook('onDropEnd', function(ctx)
+            o:onDND(o:canvas(), 'exit', ctx)
         end)
         :hook('onFocusLost', function(ctx)
             o:state():focused(false)

@@ -50,6 +50,19 @@ function canvasController.new(pathMask)
     return o
 end
 
+function canvasController:repeatEvent(elementId, eventType)
+    local element = self.elements[elementId]
+    if element == nil then
+        return
+    end
+    local event = element.latestEvents[eventType]
+    if event == nil then
+        return
+    end
+    local timer, canvas, elementId, x, y = table.unpack(event)
+    self:onMouseEvent(canvas, eventType, elementId, x, y)
+end
+
 ---@param canvas hs.canvas
 ---@param eventType string
 ---@param elementId string
@@ -60,16 +73,16 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
     if state == nil then
         self.elementsPrivate[elementId] = self.elementsPrivate[elementId] or {}
         self.elementsPrivate[elementId].listenForFocusUpdates = hs.watchable.watch(
-            string.format(self.pathMask, elementId), 'isFocused',
-            function(watcher, path, key, old, new)
-                if new == true then
-                    for element, state in pairs(self.elements) do
-                        if element ~= elementId then
-                            self.elements[element].isFocused = false
+                string.format(self.pathMask, elementId), 'isFocused',
+                function(watcher, path, key, old, new)
+                    if new == true then
+                        for element, state in pairs(self.elements) do
+                            if element ~= elementId then
+                                self.elements[element].isFocused = false
+                            end
                         end
                     end
                 end
-            end
         )
         state = hs.watchable.new(string.format(self.pathMask, elementId), true)
         state.id = elementId
@@ -80,7 +93,7 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
         state.isDragged = false
         state.actionRequested = nil
         state.cursorLocation = nil
-        state.dropTarget = nil
+        state.dropTarget = false
         state.latestEvents = {}
         self.elements[elementId] = state
     end
@@ -90,16 +103,10 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
     state.latestEvents[eventType] = { hs.timer.absoluteTime(), canvas, elementId, x, y }
 
     --- cursor management
-    --state.cursorLocation = { x, y }
+    state.cursorLocation = hs.geometry({ x, y })
     if self.before ~= nil and  state.id ~= self.before.id then
         self.before.cursorLocation = nil
     end
-
-    --- selection management
-    if eventType ~= 'mouseExit' then
-        self:ensureSelected(state)
-    end
-
 
     --- selection management
     if eventType ~= 'mouseExit' then
@@ -112,6 +119,10 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
     end
     if eventType == 'mouseUp' then
         self:onDraggingCancel()
+    end
+
+    if self.beingDragged ~= nil and self.selected ~= nil and self.selected ~= self.beingDragged then
+        self.selected.dropTarget = self.beingDragged
     end
 
 
@@ -131,6 +142,7 @@ end
 function canvasController:onSelectionLost()
     if self.selected ~= nil then
         self.selected.isSelected = false
+        self.selected.dropTarget = false
     end
     self.selected = nil
 end
@@ -146,9 +158,25 @@ end
 function canvasController:onDraggingStart(who)
     self.beingDragged = who
     who.isDragged = true
+
+    who.checkForMouseEVents = hs.eventtap.new({ hs.eventtap.event.types.leftMouseDown }, function(event)
+        if self.selected == nil then
+            who.isDragged = false
+            who.checkForMouseEVents:stop()
+            who.checkForMouseEVents = nil
+            self.beingDragged = nil
+            self:repeatEvent(who.id, 'mouseEnter')
+        end
+        return false
+    end):start()
+
     who.refreshCursorPosition = hs.timer.doEvery(0.05, function()
         local loc = hs.mouse.getRelativePosition()
         who.cursorLocation = { loc.x, loc.y }
+        if not who.isDragged then
+            who.refreshCursorPosition:stop()
+            self.beingDragged = nil
+        end
     end)
 end
 
@@ -167,6 +195,9 @@ function hub.new(id, tag, loglevel)
     o.state = hs.watchable.new('X:['..id..']:>', true)
     o.pathMask = 'X:['.. id .. '/%s]:>'
     o.ctrl = canvasController.new(o.pathMask)
+    o.ctx = {
+        groups = {},
+    }
 
     return o
 end
@@ -195,7 +226,6 @@ observer.__name = 'watcher'
 function hub:attach(elementIds)
     local o = {}
     o.elementIds = elementIds
-    o.ctx = {}
     o.log = hs.logger.new('ui.preview.events.observer', 'debug')
 
     o.config = {
@@ -215,6 +245,9 @@ function hub:attach(elementIds)
         onDrag = function(ctx) o.log.d("onDrag") end,
         onMoveBegin = function(ctx) o.log.d("onMoveBegin") end,
         onMoveEnd = function(ctx) o.log.d("onMoveEnd") end,
+        onDropBegin = function(ctx) o.log.d("onDropBegin") end,
+        onDropEnd = function(ctx) o.log.d("onDropEnd") end,
+        onDropReceived = function(ctx) o.log.d("onDropEnd") end,
 
         doFocus = function(elementId) self[elementId]:change('isFocused', true) end,
     })
@@ -230,13 +263,53 @@ function hub:attach(elementIds)
                     o:hooks().onSessionEnd(ctx)
                 end
             end
+            if key == 'dropTarget' then
+                if new then
+                    ctx.dropTarget = true
+                    self.ctx.dropTarget = elementId
+                    o:hooks().onDropBegin(ctx)
+                else
+                    if ctx.dropTarget then
+                        o:hooks().onDropEnd(ctx)
+                        self.ctx.dropTarget = nil
+                        ctx.dropTarget = false
+                    end
+                end
+            end
+            if key == 'cursorLocation' then
+                if ctx.isDragged then
+                    o:hooks().onDrag(ctx)
+                end
+            end
+            if key == 'isDragged' then
+                if new then
+                    ctx.isDragged = true
+                    self.ctx.beingDragged = elementId
+                    o:hooks().onMoveBegin(ctx)
+                else
+                    if ctx.isDragged then
+                        o:hooks().onMoveEnd(ctx)
+                        ctx.isDragged = false
+                        self.ctx.beingDragged = nil
+                    end
+                end
+            end
             if key == 'isFocused' then
                 if new == false then
                     o:hooks().onFocusLost(ctx)
                 end
             end
             if key == 'actionRequested' then
-                new:doOnce(function() o:hooks().onClick(ctx) end)
+                if self.ctx.beingDragged and self.ctx.dropTarget then
+                    self.ctx.groups[self.ctx.dropTarget] = self.ctx.groups[self.ctx.dropTarget] or {}
+                    table.insert(self.ctx.groups[self.ctx.dropTarget], self.ctx.beingDragged)
+
+                    o:hooks()['onDropReceived'](self[self.ctx.beingDragged])
+                    self[self.ctx.beingDragged]:change('isDragged', false)
+                    self[self.ctx.dropTarget]:change('dropTarget', false)
+                else
+                    new:doOnce(function() o:hooks().onClick(ctx) end)
+                end
             end
         end)
     end)
