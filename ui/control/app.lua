@@ -88,7 +88,7 @@ function app:init(appName, layout, app)
         self.cfg:event('flow')
         self.flowTime:start()
     end)
-    self.snapshotter = hs.timer.new(0.5 + 2 * hs.math.randomFloat(), ui.fn.partial(self.doSnapshot, self), true)
+    self.snapshotter = hs.timer.delayed.new(hs.math.randomFloat(), ui.fn.partial(self.doSnapshot, self))
     self.transitions = {
         ['init->started'] = function()
             self.transitions['init->starting']()
@@ -269,6 +269,12 @@ function app:activate()
 end
 
 function app:doSnapshot()
+    if not self.screen or not self.screen.__notifyPriority then
+        self.snapshotter:start()
+        return
+    end
+    self.snapshotter:start(self.screen.__notifyPriority)
+
     local locked = self.screen:locked()
     local confKey = string.format('live.%s', locked and 'locked' or 'floating')
     if not self.__globalConfig:get(confKey) then
@@ -286,7 +292,7 @@ function app:doSnapshot()
     if not w then
         return
     end
-    if not self.screen then return end
+
 
     local s = w:snapshot(true)
     if s ~= nil then

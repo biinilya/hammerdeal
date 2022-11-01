@@ -36,13 +36,15 @@ function state:new()
         :visible(false)
 end
 
-function state:onAttach(cb)
+function state:onAttach(cb, priority)
     self.__notifyCb = cb
+    self.__notifyPriority = priority or 0
     return self
 end
 
 function state:onDetach()
     self.__notifyCb = nil
+    self.__notifyPriority = nil
     return self
 end
 

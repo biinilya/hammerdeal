@@ -21,13 +21,6 @@ M.thumbnail = function(bundleID)
         { w = 276, h = 200 }
     )
     _c[1] = {
-        type = 'image',
-        image = hs.image.imageFromAppBundle(bundleID),
-        imageAlignment = 'right',
-        imageAlpha = 1,
-        imageScaling = 'scaleProportionally'
-    }
-    _c[2] = {
         type = "rectangle",
         action = "fill",
         fillGradientColors = { {
@@ -47,13 +40,6 @@ M.thumbnailS = function(bundleID)
         hs.screen.mainScreen():frame():scale(0.125)
     )
     _c[1] = {
-        type = 'image',
-        image = hs.image.imageFromAppBundle(bundleID),
-        imageAlignment = 'left',
-        imageAlpha = 1,
-        imageScaling = 'scaleProportionally'
-    }
-    _c[2] = {
         type = "rectangle",
         action = "fill",
         fillGradientColors = { {

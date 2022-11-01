@@ -29,6 +29,8 @@ function layout:init(numCells)
     self.preOrdered = {}
     self.dirty = false
     self.hub = ui.events.new('root', 'window', 'info')
+    self.empty = {state = ui.state:new()}
+
 
     local frame = hs.geometry('[0,5,15,97]'):fromUnitRect(ui.screen)
 
@@ -87,9 +89,9 @@ function layout:init(numCells)
 
     self.canvas:show():level(hs.canvas.windowLevels.dock)
 
-    self.updater = hs.timer.doEvery(15, function()
+    self.updater = hs.timer.doEvery(1, function()
         self:reorder()
-        collectgarbage()
+        collectgarbage('step')
     end, true)
     hs.timer.doAfter(0.5, function()
         self:reorder()
@@ -156,17 +158,16 @@ function layout:reorder()
 
     self.preOrdered = preOrdered
     for i, gate in ipairs(self.gates) do
-        local linkedTo = self.preOrdered[i]
-        if linkedTo == nil then
-            gate:state(ui.state:new())
-        elseif gate:state().id ~= linkedTo.state.id then
+        local linkedTo = self.preOrdered[i] or self.empty
+        if gate:state().id ~= linkedTo.state.id then
             if gate:state() ~= nil then
-               gate:state():onDetach()
+                gate:state():onDetach()
+                gate:apply()
             end
             gate:state(linkedTo.state)
-            gate:state():onAttach(function() gate:apply() end)
+            gate:state():onAttach(function() gate:apply() end, i)
+            gate:apply()
         end
-        gate:apply()
     end
 end
 

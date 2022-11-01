@@ -170,7 +170,7 @@ function preview:new(id, hub, previewArea)
             imageAlpha = 1,
             withShadow = true,
             padding = 5,
-            antialias = false,
+            antialias = true,
         }, {
             type = 'text',
             action = 'skip',
@@ -186,6 +186,15 @@ function preview:new(id, hub, previewArea)
             action = 'skip',
             strokeColor = { white = 1, alpha = 0.5 },
             strokeWidth = 5,
+        }, {
+            type = 'image',
+            action = 'fill',
+            image = o:rState():logo(),
+            imageAlignment = 'right',
+            imageAlpha = 0.5,
+            withShadow = true,
+            padding = 5,
+            antialias = true,
         }):alpha(1.0)
         :clickActivating(false)
         :canvasMouseEvents(true, true, true, false)
@@ -210,6 +219,10 @@ function preview:apply(remoteState)
         self:rState():background(remoteState:background())
         ---@diagnostic disable-next-line: param-type-mismatch
     end
+    if self:rState():logo() ~= remoteState:logo() then
+        self:canvas():elementAttribute(4, 'image', remoteState:logo())
+        pcall(function() hs.image.__gc(remoteState:logo()) end  )
+    end
     if  self:rState():locked() ~= remoteState:locked() or
         self:rState():focused() ~= remoteState:focused()
     then
@@ -224,14 +237,17 @@ function preview:apply(remoteState)
     end
     if self:rState():highlighted() ~= remoteState:highlighted() then
         self:canvas():elementAttribute(3, 'action', remoteState:highlighted() and 'stroke' or 'skip')
+        --self:canvas():elementAttribute(4, 'action', remoteState:highlighted() and 'fill' or 'skip')
         ---@diagnostic disable-next-line: param-type-mismatch
         self:rState():highlighted(remoteState:highlighted())
     end
     if self:rState():visible() ~= remoteState:visible() then
         if remoteState:visible() then
             self:canvas():elementAttribute(1, 'action', 'fill')
+            self:canvas():elementAttribute(4, 'action', 'fill')
         else
             self:canvas():elementAttribute(1, 'action', 'skip')
+            self:canvas():elementAttribute(4, 'action', 'skip')
         end
         ---@diagnostic disable-next-line: param-type-mismatch
         self:rState():visible(remoteState:visible())

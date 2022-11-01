@@ -78,14 +78,14 @@ function broker:start()
         math.ceil((f.y + f.h) * 100 / ui.screen.h)
     }
     local rect2 = {
-        math.ceil(f.x * 100 / ui.screen.w),
-        math.ceil(f.y * 100 / ui.screen.h),
-        math.ceil((f.x + f.w/2) * 100 / ui.screen.w),
-        math.ceil((f.y + f.h/2) * 100 / ui.screen.h)
+        math.ceil(99),
+        math.ceil(99),
+        math.ceil(99 + f.w * 100 / ui.screen.w),
+        math.ceil(99 + f.h * 100 / ui.screen.h),
     }
 
     local rule = string.format('mov 3 foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
-    local rule2 = string.format('mov hid foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
+    local rule2 = string.format('mov all foc [%d,%d,%d,%d] 0,0', table.unpack(rect2))
 
 
     hs.window.layout.new({
