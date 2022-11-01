@@ -28,72 +28,72 @@ function layout:init(numCells)
     self.connections = {}
     self.preOrdered = {}
     self.dirty = false
-    self.hub = ui.events.new('root', 'window', 'debug')
+    self.hub = ui.events.new('root', 'window', 'info')
 
-    local function makeCanvas(events)
-        local frame = hs.geometry('[0,5,15,97]'):fromUnitRect(ui.screen)
-        local gates = {}
+    local frame = hs.geometry('[0,5,15,97]'):fromUnitRect(ui.screen)
 
-        local canvas = hs.canvas.new(frame)
-        :appendElements(
-            {
-                type = "image",
-                action = "fill",
-                image = hs.image.imageFromPath(hs.configdir .. '/bg.png'),
-                imageAlpha = 0.4,
-                imageScaling = 'scaleToFit',
-            }, {
-                type = "rectangle",
-                fillColor = { white = 0.1, alpha = 0.7 },
-                frame = { x = "0%", y = "0%", h = "100%", w = "100%" },
-                padding = 0,
-                fillGradient = "radial",
-                fillGradientAngle = 45,
-                fillGradientColors = {
-                    { black = 0.1, alpha = 0.8 },
-                    { black = 0.9, alpha = 0.5 },
-                    { black = 0.5, alpha = 0.3 },
-                    { black = 0.9, alpha = 0.5 },
-                    { black = 0.1, alpha = 0.9 },
-                },
-                fillGradientCenter = { x = -1.0, y = -1.0 },
-            }
-        )
-        :behaviorAsLabels({
-            "transient",
-            "canJoinAllSpaces",
-            "ignoresCycle",
-            "fullScreenAuxiliary",
-            "fullScreenAllowsTiling"
-        })
-        :clickActivating(false)
-        :canvasMouseEvents(false, false, false, false)
-        :alpha(0.5)
-        :wantsLayer(true)
+    self.canvas = hs.canvas.new(frame)
+    :appendElements(
+        {
+            type = "image",
+            action = "fill",
+            image = hs.image.imageFromPath(hs.configdir .. '/bg.png'),
+            imageAlpha = 0.4,
+            imageScaling = 'scaleToFit',
+        }, {
+            type = "rectangle",
+            fillColor = { white = 0.1, alpha = 0.7 },
+            frame = { x = "0%", y = "0%", h = "100%", w = "100%" },
+            padding = 0,
+            fillGradient = "radial",
+            fillGradientAngle = 45,
+            fillGradientColors = {
+                { black = 0.1, alpha = 0.8 },
+                { black = 0.9, alpha = 0.5 },
+                { black = 0.5, alpha = 0.3 },
+                { black = 0.9, alpha = 0.5 },
+                { black = 0.1, alpha = 0.9 },
+            },
+            fillGradientCenter = { x = -1.0, y = -1.0 },
+        }
+    )
+    :behaviorAsLabels({
+        "transient",
+        "canJoinAllSpaces",
+        "ignoresCycle",
+        "fullScreenAuxiliary",
+        "fullScreenAllowsTiling"
+    })
+    :clickActivating(false)
+    :canvasMouseEvents(false, false, false, false)
+    :alpha(0.5)
+    :wantsLayer(true)
 
 
-        ---@type hs.geometry
-        local workspace = hs.geometry.copy(self.workspace)
-        workspace.x, workspace.w, workspace.h = canvas:frame().x, workspace.x, workspace.h / 8
-        for i = 1, numCells do
-            local cell = hs.geometry.copy(hs.geometry(workspace))
-            cell.y = cell.y + (cell.h * (i - 1))
-            cell.w = cell.h * ui.preview.size.aspect
+    ---@type hs.geometry
+    local workspace = hs.geometry.copy(self.workspace)
+    workspace.x, workspace.w, workspace.h = self.canvas:frame().x, workspace.x, workspace.h / 8
+    for i = 1, numCells do
+        local cell = hs.geometry.copy(hs.geometry(workspace))
+        cell.y = cell.y + (cell.h * (i - 1))
+        cell.w = cell.h * ui.preview.size.aspect
 
 
-            local id = i
-            local gate = ui.preview.window:new(id, self.hub, {x=cell.x, y=cell.y, w=cell.w, h=cell.h})
-            gate:show()
-            gates[i] = gate
-        end
-        return canvas, gates
+        local id = i
+        local gate = ui.preview.window:new(id, self.hub, {x=cell.x, y=cell.y, w=cell.w, h=cell.h})
+        gate:show()
+        self.gates[i] = gate
     end
-    self.canvas, self.gates = makeCanvas()
+
     self.canvas:show():level(hs.canvas.windowLevels.dock)
 
-    self.updater = hs.timer.doEvery(1, function()
+    self.updater = hs.timer.doEvery(15, function()
         self:reorder()
-    end, true):start()
+        collectgarbage()
+    end, true)
+    hs.timer.doAfter(0.5, function()
+        self:reorder()
+    end)
 
     return self
 end
@@ -155,19 +155,19 @@ function layout:reorder()
     end)
 
     self.preOrdered = preOrdered
-    local function remap(gates)
-        for i, gate in ipairs(gates) do
-            local linkedTo = self.preOrdered[i]
-            if linkedTo == nil then
-                gate:state(ui.preview.state:new())
-            elseif gate:state().id ~= linkedTo.state.id then
-                gate:state(linkedTo.state)
+    for i, gate in ipairs(self.gates) do
+        local linkedTo = self.preOrdered[i]
+        if linkedTo == nil then
+            gate:state(ui.state:new())
+        elseif gate:state().id ~= linkedTo.state.id then
+            if gate:state() ~= nil then
+               gate:state():onDetach()
             end
-            gate:apply()
+            gate:state(linkedTo.state)
+            gate:state():onAttach(function() gate:apply() end)
         end
+        gate:apply()
     end
-
-    remap(self.gates)
 end
 
 return layout

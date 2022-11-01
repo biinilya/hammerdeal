@@ -36,7 +36,20 @@ function state:new()
         :visible(false)
 end
 
+function state:onAttach(cb)
+    self.__notifyCb = cb
+    return self
+end
+
+function state:onDetach()
+    self.__notifyCb = nil
+    return self
+end
+
 function state:apply()
+    if self.__notifyCb ~= nil then
+        self.__notifyCb()
+    end
     return self
 end
 

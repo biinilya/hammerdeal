@@ -11,11 +11,8 @@ preview.__lettersMap = { '🅐', '🅑', '🅒', '🅓', '🅔', '🅕', '🅖',
 ---@return ui.preview.state | ui.preview.window
 function preview:state(s)
     if s ~= nil then
-        if self._state ~= nil then
-
-        end
         self._state = s
-        return self
+        return self:apply()
     end
     return self._state
 end
@@ -40,8 +37,8 @@ function preview:canvas(c)
     return self._canvas
 end
 
----@param w ui.preview.events.watcher | nil
----@return ui.preview.events.watcher | ui.preview.window
+---@param w ui.preview.events.observer | nil
+---@return ui.preview.events.observer | ui.preview.window
 function preview:previewEvents(w)
     if w ~= nil then
         self._previewEvents = w
@@ -177,7 +174,7 @@ function preview:new(id, hub, previewArea)
         }, {
             type = 'text',
             action = 'skip',
-            textSize = 100,
+            textSize = 60,
             text = 'COPY',
             textColor = { white=1, alpha = 0.5 },
             fillGradientCenter = { x = 0, y = 0 },
@@ -195,7 +192,7 @@ function preview:new(id, hub, previewArea)
         :mouseCallback(hub:cbForMouseEvents(id .. '/thumbnail'))
         :level(hs.canvas.windowLevels.dock)
         :draggingCallback(ui.fn.partial(o.onDND, o))
-        :wantsLayer(false)
+        :wantsLayer(true)
         :behaviorAsLabels({
             "transient",
             "canJoinAllSpaces",
@@ -209,6 +206,7 @@ function preview:apply(remoteState)
     end
     if self:rState():background() ~= remoteState:background() then
         self:canvas():elementAttribute(1, 'image', remoteState:background())
+        pcall(function() hs.image.__gc(remoteState:background()) end  )
         self:rState():background(remoteState:background())
         ---@diagnostic disable-next-line: param-type-mismatch
     end
@@ -238,6 +236,7 @@ function preview:apply(remoteState)
         ---@diagnostic disable-next-line: param-type-mismatch
         self:rState():visible(remoteState:visible())
     end
+    collectgarbage('step')
     return self
 end
 
@@ -271,12 +270,6 @@ function preview:toggleLock()
     self:apply(self:state():locked(isLocked))
     ---@diagnostic disable-next-line: param-type-mismatch
     self:onLockedHook()(self:state():locked())
-    return self
-end
-
-function preview:updatePreview(img)
-    self:state():background(img)
-    self:apply()
     return self
 end
 

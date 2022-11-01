@@ -12,6 +12,7 @@ local broker = {}
 broker.__index = broker
 broker.__name = 'ui.control.launcher'
 broker.__layoutAutoChanged = nil
+hs.window.layout.applyDelay = 0
 
 
 ---@return ui.control.broker
@@ -76,16 +77,21 @@ function broker:start()
         math.ceil((f.x + f.w) * 100 / ui.screen.w),
         math.ceil((f.y + f.h) * 100 / ui.screen.h)
     }
+    local rect2 = {
+        math.ceil(f.x * 100 / ui.screen.w),
+        math.ceil(f.y * 100 / ui.screen.h),
+        math.ceil((f.x + f.w/2) * 100 / ui.screen.w),
+        math.ceil((f.y + f.h/2) * 100 / ui.screen.h)
+    }
 
     local rule = string.format('mov 3 foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
-    local rule2 = string.format('mov all foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
+    local rule2 = string.format('mov hid foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
 
 
     hs.window.layout.new({
         { self.__bbcNew, 'noaction' },
         { self.__bbcWorld, rule .. '|' .. rule2 },
     }, 'bbcworld', 'info'):start()
-
 
 
     -- self.__bbcWorld:subscribe({hs.window.filter.windowRejected}, function(w, appName, event)

@@ -1,5 +1,6 @@
-  --require('mobdebug').start()
- require('ui')
+--require('mobdebug').start()
+require('ui')
+collectgarbage('generational')
 
- App = ui.control.broker:new()
- App:start()
+App = ui.control.broker:new()
+App:start()

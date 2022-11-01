@@ -1,8 +1,7 @@
 local events = require 'ui.preview.events'
 
 ---@diagnostic disable: need-check-nil
-hs.window.animationDuration = 0.0
-hs.application.enableSpotlightForNameSearches(true)
+hs.application.enableSpotlightForNameSearches(false)
 
 function _(...)
     for i, v in ipairs({...}) do

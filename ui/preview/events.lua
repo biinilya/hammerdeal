@@ -90,20 +90,20 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
     state.latestEvents[eventType] = { hs.timer.absoluteTime(), canvas, elementId, x, y }
 
     --- cursor management
-    state.cursorLocation = { x, y }
+    --state.cursorLocation = { x, y }
     if self.before ~= nil and  state.id ~= self.before.id then
         self.before.cursorLocation = nil
     end
 
     --- selection management
     if eventType ~= 'mouseExit' then
-        self:ensureFocused(state)
+        self:ensureSelected(state)
     end
 
 
     --- selection management
     if eventType ~= 'mouseExit' then
-        self:ensureFocused(state)
+        self:ensureSelected(state)
     end
 
     --- drag management
@@ -119,7 +119,7 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
 end
 
 
-function canvasController:ensureFocused(who)
+function canvasController:ensureSelected(who)
     who.isSelected = true
     if self.selected ~= nil and self.selected.id ~= who.id then
         self:onSelectionLost()
