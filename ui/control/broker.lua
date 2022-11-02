@@ -21,7 +21,7 @@ function broker:new()
     setmetatable(obj, broker)
     obj:enableHotkeys()
     obj.__units = {}
-    obj.__bbcWorld = hs.window.filter.new(nil, 'BB', 'info'):rejectApp('Hammerspoon')
+    obj.__bbcWorld = hs.window.filter.new(nil, 'BB', 'warning'):rejectApp('Hammerspoon')
     obj.__layout = ui.control.layout:new(8)
     obj.__bbcLife = hs.application.watcher.new(ui.fn.partial(obj.processAppEvent, obj))
     obj.__bbcNew = hs.window.filter.new(
@@ -77,27 +77,20 @@ function broker:start()
         math.ceil((f.x + f.w) * 100 / ui.screen.w),
         math.ceil((f.y + f.h) * 100 / ui.screen.h)
     }
-    local rect2 = {
-        math.ceil(99),
-        math.ceil(99),
-        math.ceil(99 + f.w * 100 / ui.screen.w),
-        math.ceil(99 + f.h * 100 / ui.screen.h),
-    }
 
-    local rule = string.format('mov 3 foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
-    local rule2 = string.format('mov all foc [%d,%d,%d,%d] 0,0', table.unpack(rect2))
+    local rule = string.format('mov 1 foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
+    local rule2 = string.format('mov all foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
 
 
     hs.window.layout.new({
         { self.__bbcNew, 'noaction' },
         { self.__bbcWorld, rule .. '|' .. rule2 },
-    }, 'bbcworld', 'info'):start()
+    }, 'bbcworld', 'warning'):apply()
 
 
-    -- self.__bbcWorld:subscribe({hs.window.filter.windowRejected}, function(w, appName, event)
-    --     self:onWindowClose(w, appName)
-    -- end, true)
-    hs.timer.doAfter(1, function() self.__layout.updatesAllowed = true  end)
+    self.__bbcWorld:subscribe({hs.window.filter.windowRejected}, function(w, appName, event)
+        self:onWindowClose(w, appName)
+    end, true)
     return self
 end
 

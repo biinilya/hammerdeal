@@ -92,6 +92,7 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
         state.isSelected = false
         state.isDragged = false
         state.actionRequested = nil
+        state.linkRequested = nil
         state.cursorLocation = nil
         state.dropTarget = false
         state.latestEvents = {}
@@ -101,6 +102,23 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
     self.before = self.latest
     self.latest = state
     state.latestEvents[eventType] = { hs.timer.absoluteTime(), canvas, elementId, x, y }
+
+    if self.beingDragged ~= nil then
+        if self.selected and self.selected ~= self.latest then
+            self.selected.isSelected = false
+            self.selected.dropTarget = false
+        end
+        self.selected = self.latest
+        self.selected.isSelected = true
+        self.selected.dropTarget = self.beingDragged
+        --if eventType == 'mouseUp' then
+        --    self.selected.linkRequested = action.new()
+        --end
+        if eventType == 'mouseDown' then
+            self.selected.linkRequested = action.new()
+        end
+        return
+    end
 
     --- cursor management
     state.cursorLocation = hs.geometry({ x, y })
@@ -115,16 +133,17 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
 
     --- drag management
     if eventType == 'mouseDown' then
-        self.draggingTimer = hs.timer.delayed.new(2, function() self:onDraggingStart(state) end):start()
+        self.elementsPrivate[elementId].clickTimer = hs.timer.doAfter(0.3, function()
+            self:onDraggingStart(state)
+        end)
+
     end
     if eventType == 'mouseUp' then
-        self:onDraggingCancel()
+        if self.elementsPrivate[elementId].clickTimer and self.elementsPrivate[elementId].clickTimer:running() then
+            self.elementsPrivate[elementId].clickTimer:stop()
+            self.latest.actionRequested = action.new()
+        end
     end
-
-    if self.beingDragged ~= nil and self.selected ~= nil and self.selected ~= self.beingDragged then
-        self.selected.dropTarget = self.beingDragged
-    end
-
 
     return self._state
 end
@@ -136,7 +155,11 @@ function canvasController:ensureSelected(who)
         self:onSelectionLost()
     end
     self.selected = who
-    self.selectionLostTimer:start()
+    if self.latest.dropTarget then
+        --- do nothing
+    else
+        self.selectionLostTimer:start()
+    end
 end
 
 function canvasController:onSelectionLost()
@@ -147,28 +170,20 @@ function canvasController:onSelectionLost()
     self.selected = nil
 end
 
-function canvasController:onDraggingCancel()
-    self.draggingTimer:stop()
-    if hs.timer.absoluteTime() - self.latest.latestEvents['mouseDown'][1] < 0.5*1e9 then
-        self.latest.actionRequested = action.new()
-        return
-    end
-end
-
 function canvasController:onDraggingStart(who)
     self.beingDragged = who
     who.isDragged = true
 
-    who.checkForMouseEVents = hs.eventtap.new({ hs.eventtap.event.types.leftMouseDown }, function(event)
-        if self.selected == nil then
-            who.isDragged = false
-            who.checkForMouseEVents:stop()
-            who.checkForMouseEVents = nil
-            self.beingDragged = nil
-            self:repeatEvent(who.id, 'mouseEnter')
-        end
-        return false
-    end):start()
+    --who.checkForMouseEVents = hs.eventtap.new({ hs.eventtap.event.types.leftMouseDown }, function(event)
+    --    if self.selected == nil then
+    --        who.isDragged = false
+    --        who.checkForMouseEVents:stop()
+    --        who.checkForMouseEVents = nil
+    --        self.beingDragged = nil
+    --        self:repeatEvent(who.id, 'mouseEnter')
+    --    end
+    --    return false
+    --end):start()
 
     who.refreshCursorPosition = hs.timer.doEvery(0.05, function()
         local loc = hs.mouse.getRelativePosition()
@@ -197,6 +212,7 @@ function hub.new(id, tag, loglevel)
     o.ctrl = canvasController.new(o.pathMask)
     o.ctx = {
         groups = {},
+        localCtx = {}
     }
 
     return o
@@ -247,13 +263,14 @@ function hub:attach(elementIds)
         onMoveEnd = function(ctx) o.log.d("onMoveEnd") end,
         onDropBegin = function(ctx) o.log.d("onDropBegin") end,
         onDropEnd = function(ctx) o.log.d("onDropEnd") end,
-        onDropReceived = function(ctx) o.log.d("onDropEnd") end,
+        onDropReceived = function(ctx, otherCtx) o.log.d("onDropReceived") end,
 
         doFocus = function(elementId) self[elementId]:change('isFocused', true) end,
     })
 
     hs.fnutils.each(elementIds, function(elementId)
         local ctx = {}
+        self.ctx.localCtx[elementId] = ctx
         self[elementId] = hs.watchable.watch(string.format(self.pathMask, elementId), '*',function(watcher, path, key, old, new)
             self.log.df("%s %s; [%s] => [%s]", path, key, repr(old), repr(new))
             if key == 'isSelected' then
@@ -299,17 +316,17 @@ function hub:attach(elementIds)
                     o:hooks().onFocusLost(ctx)
                 end
             end
-            if key == 'actionRequested' then
-                if self.ctx.beingDragged and self.ctx.dropTarget then
+            if key == 'linkRequested' then
+                if self.ctx.dropTarget ~= self.ctx.beingDragged then
                     self.ctx.groups[self.ctx.dropTarget] = self.ctx.groups[self.ctx.dropTarget] or {}
                     table.insert(self.ctx.groups[self.ctx.dropTarget], self.ctx.beingDragged)
-
-                    o:hooks()['onDropReceived'](self[self.ctx.beingDragged])
-                    self[self.ctx.beingDragged]:change('isDragged', false)
-                    self[self.ctx.dropTarget]:change('dropTarget', false)
-                else
-                    new:doOnce(function() o:hooks().onClick(ctx) end)
+                    o:hooks()['onDropReceived'](ctx, self.ctx.localCtx[self.ctx.beingDragged])
                 end
+                self[self.ctx.beingDragged]:change('isDragged', false)
+                self[self.ctx.dropTarget]:change('dropTarget', false)
+            end
+            if key == 'actionRequested' then
+                new:doOnce(function() o:hooks().onClick(ctx) end)
             end
         end)
     end)

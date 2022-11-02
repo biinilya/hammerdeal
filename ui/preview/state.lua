@@ -26,6 +26,8 @@ function state:new()
     local o = {}
     setmetatable(o, self)
     o.id = hs.host.uuid()
+    o.__joinedTo = {}
+    o.__mainWindow = {}
 
     return o
         :locked(false)
@@ -47,6 +49,20 @@ function state:onDetach()
     self.__notifyPriority = nil
     return self
 end
+
+---@param other ui.preview.state
+function state:isMasterTo(other)
+    self.__joinedTo[other.id] = other
+    other.__belongsTo = self
+    return self
+end
+
+
+function state:mainWindow(w)
+    self.__mainWindow = {w}
+    return self
+end
+
 
 function state:apply()
     if self.__notifyCb ~= nil then

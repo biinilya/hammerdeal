@@ -61,7 +61,7 @@ function app:init(appName, layout, app)
     self.layout = layout
     self.attached = false
     self.cfg = ui.config:new(appName)
-    self.log = hs.logger.new(appName, 'debug')
+    self.log = hs.logger.new(appName, 'warning')
     self.log.f('Init app [%s]', appName)
     self.state = 'init'
     self.windows = {}
@@ -139,19 +139,14 @@ function app:init(appName, layout, app)
 
             local autoLayout = (self.cfg:get('layout') or hs.keycodes.layouts()[1])
             hs.keycodes.setLayout(autoLayout)
+            self:enforceLayout(true)
             local checkLayout = nil
             checkLayout = hs.timer.delayed.new(1, function()
-                if not self.hsApp:isFrontmost() then return end
-                local currentLayout = hs.keycodes.currentLayout()
-                if autoLayout ~= currentLayout then
-                    self.cfg:set('layout', currentLayout)
-                    autoLayout = currentLayout
+                if self.state ~= 'focused' then
+                    return
                 end
-                --local focusWindow = hs.window.focusedWindow()
-                --hs.window.tiling.tileWindows(
-                --    {focusWindow},
-                --    self.layout.workspace, ui.preview.size.aspect, false, true, 0):apply()
                 checkLayout:start()
+                self:enforceLayout()
             end):start()
             self.flowTime:start()
         end,
@@ -175,19 +170,82 @@ function app:init(appName, layout, app)
     return self
 end
 
+function app:enforceLayout(forceFront)
+    if self.screen.__belongsTo then
+        if self.state == 'focused' then
+            self.screen.__belongsTo:hooks()['onClick']()
+        end
+        self:changeStatusTo('started', self.hsApp)
+        return
+    end
+    local currentLayout = hs.keycodes.currentLayout()
+    if autoLayout ~= currentLayout then
+        self.cfg:set('layout', currentLayout)
+        autoLayout = currentLayout
+    end
+    if self.screen ~= nil and self.layout ~= nil then
+        local tileWindows = {self.hsApp:mainWindow()}
+        for _, joined in pairs(self.screen.__joinedTo) do
+            for idx, window in ipairs(joined.__mainWindow) do
+                if window then
+                    table.insert(tileWindows, window)
+                    if forceFront then
+                        window:raise()
+                    end
+                end
+            end
+        end
+        tileWindows[1]:focus()
+        tileWindows[1]:raise()
+        if #tileWindows == 1 then
+            tileWindows[1]:setFrame(self.layout.workspace)
+        elseif #tileWindows == 2 then
+            local workspace = self.layout.workspace:copy()
+            local left = workspace:copy()
+            local right = workspace:copy()
+            left.w = workspace.w * 6 / 10
+            right.x = workspace.x + left.w
+            right.w = workspace.w * 4 / 10
+            tileWindows[1]:setFrame(left)
+            tileWindows[2]:setFrame(right)
+        elseif #tileWindows == 3 then
+            local workspace = self.layout.workspace:copy()
+            local left = workspace:copy()
+            local topRight = workspace:copy()
+            local bottomRight = workspace:copy()
+            left.w = workspace.w / 2
+            topRight.x = workspace.x + left.w
+            bottomRight.x = workspace.x + left.w
+            topRight.h = workspace.h / 2
+            bottomRight.y = workspace.y + topRight.h
+            bottomRight.h = workspace.h / 2
+            tileWindows[1]:setFrame(left)
+            tileWindows[2]:setFrame(topRight)
+            tileWindows[3]:setFrame(bottomRight)
+        end
+
+        --hs.window.tiling.tileWindows(tileWindows, self.layout.workspace, 1, true, true, 0)
+    end
+end
+
 ---@param status string
 ---@param appObject hs.application
 function app:changeStatusTo(status, appObject)
+    if self.screen.__belongsTo then
+        self.layout:detach(self.name)
+        return
+    end
+    
     local transition = string.format('%s->%s', self.state, status)
     if self.transitions[transition] then
         self.transitions[transition]()
     else
-        self.log.wf('Ignored transition [%s]', transition)
+        self.log.f('Ignored transition [%s]', transition)
     end
     if appObject ~= nil then
         self.hsApp = appObject
     end
-
+    
     if self.cfg:get('locked') or (self.hsApp ~= nil and #self.hsApp:allWindows() > 0) then
         if not self.attached then
             self.attached = true
@@ -199,6 +257,7 @@ function app:changeStatusTo(status, appObject)
             self.layout:detach(self.name)
         end
     end
+    self.screen:mainWindow(self.hsApp:mainWindow())
 end
 
 ---@param windowObject hs.window

@@ -16,7 +16,7 @@ layout.log = hs.logger.new('layout', 'info')
 function layout:new(numCells)
     local o = {}
     setmetatable(o, self)
-    self.workspace = hs.geometry('[16,5,97,97]'):fromUnitRect(ui.screen)
+    self.workspace = hs.geometry('[16,5,97,97]'):fromUnitRect(ui.screen):floor()
     return o:init(numCells)
 end
 
@@ -93,10 +93,6 @@ function layout:init(numCells)
         self:reorder()
         collectgarbage('step')
     end, true)
-    hs.timer.doAfter(0.5, function()
-        self:reorder()
-    end)
-
     return self
 end
 

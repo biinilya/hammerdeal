@@ -131,6 +131,7 @@ function preview:new(id, hub, previewArea)
         end)
         :hook('onDrag', function(ctx)
             ctx.avatar:setTopLeft(hs.mouse.getRelativePosition())
+            ctx.state = o:state()
         end)
         :hook('onClick', function()
             if hs.eventtap.checkKeyboardModifiers().alt then
@@ -157,10 +158,23 @@ function preview:new(id, hub, previewArea)
             return true
         end)
         :hook('onDropBegin', function(ctx)
-            o:onDND(o:canvas(), 'enter', ctx)
+            o:canvas():elementAttribute(1, 'action', 'skip')
+            o:canvas():elementAttribute(4, 'action', 'skip')
+            o:canvas():elementAttribute(2, 'action', 'fill')
+            ctx.state = o:state()
         end)
         :hook('onDropEnd', function(ctx)
-            o:onDND(o:canvas(), 'exit', ctx)
+            o:canvas():elementAttribute(1, 'action', 'fill')
+            o:canvas():elementAttribute(4, 'action', 'fill')
+            o:canvas():elementAttribute(2, 'action', 'skip')
+            ctx.state = nil
+        end)
+        :hook('onDropReceived', function(ctx, otherCtx)
+            ctx.state:isMasterTo(otherCtx.state)
+            otherCtx.state:hooks()['onClick']()
+            hs.timer.doAfter(0.5, function()
+                o:onClickedHook()()
+            end)
         end)
         :hook('onFocusLost', function(ctx)
             o:state():focused(false)
@@ -183,8 +197,8 @@ function preview:new(id, hub, previewArea)
         }, {
             type = 'text',
             action = 'skip',
-            textSize = 60,
-            text = 'COPY',
+            textSize = 100,
+            text = 'æ',
             textColor = { white=1, alpha = 0.5 },
             fillGradientCenter = { x = 0, y = 0 },
             textAlignment = 'center',
@@ -204,6 +218,7 @@ function preview:new(id, hub, previewArea)
             withShadow = true,
             padding = 5,
             antialias = true,
+
         }):alpha(1.0)
         :clickActivating(false)
         :canvasMouseEvents(true, true, true, false)
