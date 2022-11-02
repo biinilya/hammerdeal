@@ -165,6 +165,8 @@ function layout:reorder()
             gate:apply()
         end
     end
+
+    collectgarbage()
 end
 
 return layout
