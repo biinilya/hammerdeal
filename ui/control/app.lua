@@ -127,7 +127,7 @@ function app:init(appName, layout, app)
             self.screen:background(ui.preview.thumbnail(self.bundleID)):apply()
             self.state = 'started'
             if self.activateOnStart then
-                self.activate()
+                self:activate()
                 self.activateOnStart = false
             end
         end,
