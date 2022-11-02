@@ -20,18 +20,18 @@ M.thumbnail = function(bundleID)
     local _c = hs.canvas.new(
         { w = 276, h = 200 }
     )
-    _c[1] = {
-        type = "rectangle",
-        action = "fill",
-        fillGradientColors = { {
-            hex = "#37474F",
-            alpha = 0.7
-        }, {
-            hex = "#263238",
-            alpha = 0.6
-        } },
-        fillGradient = "radial"
-    }
+    --_c[1] = {
+    --    type = "rectangle",
+    --    action = "stroke",
+    --    fillGradientColors = { {
+    --        hex = "#37474F",
+    --        alpha = 0.7
+    --    }, {
+    --        hex = "#263238",
+    --        alpha = 0.6
+    --    } },
+    --    fillGradient = "radial"
+    --}
     return (_c):imageFromCanvas()
 end
 
@@ -39,18 +39,18 @@ M.thumbnailS = function(bundleID)
     local _c = hs.canvas.new(
         hs.screen.mainScreen():frame():scale(0.125)
     )
-    _c[1] = {
-        type = "rectangle",
-        action = "fill",
-        fillGradientColors = { {
-            hex = "#37474F",
-            alpha = 0.7
-        }, {
-            hex = "#263238",
-            alpha = 0.6
-        } },
-        fillGradient = "radial"
-    }
+    --_c[1] = {
+    --    type = "rectangle",
+    --    action = "stroke",
+    --    fillGradientColors = { {
+    --        hex = "#37474F",
+    --        alpha = 0.7
+    --    }, {
+    --        hex = "#263238",
+    --        alpha = 0.6
+    --    } },
+    --    fillGradient = "radial"
+    --}
     return (_c):imageFromCanvas()
 end
 
