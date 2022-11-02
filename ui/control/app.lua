@@ -299,8 +299,6 @@ function app:focusWindow(windowObject)
 end
 
 function app:activate()
-    if self.state == 'starting' or self.state == 'focused' then return end
-
     ---@type hs.window
     local w
     for window, focused in pairs(self.windows) do
