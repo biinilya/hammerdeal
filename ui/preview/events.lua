@@ -115,7 +115,12 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
         --    self.selected.linkRequested = action.new()
         --end
         if eventType == 'mouseDown' then
-            self.selected.linkRequested = action.new()
+            self.selected.linkRequested = { self.selected, self.beingDragged }
+            self.selected.isSelected = false
+            self.selected.dropTarget = false
+            self.beingDragged.isDragged = false
+            self.beingDragged = nil
+            self.selected = nil
         end
         return
     end
@@ -317,13 +322,10 @@ function hub:attach(elementIds)
                 end
             end
             if key == 'linkRequested' then
-                if self.ctx.dropTarget ~= self.ctx.beingDragged then
-                    self.ctx.groups[self.ctx.dropTarget] = self.ctx.groups[self.ctx.dropTarget] or {}
-                    table.insert(self.ctx.groups[self.ctx.dropTarget], self.ctx.beingDragged)
-                    o:hooks()['onDropReceived'](ctx, self.ctx.localCtx[self.ctx.beingDragged])
+                local dropTarget, dropEntity = table.unpack(new)
+                if dropTarget.id ~= dropEntity then
+                    o:hooks()['onDropReceived'](self.ctx.localCtx[dropTarget.id], self.ctx.localCtx[dropEntity.id])
                 end
-                self[self.ctx.beingDragged]:change('isDragged', false)
-                self[self.ctx.dropTarget]:change('dropTarget', false)
             end
             if key == 'actionRequested' then
                 new:doOnce(function() o:hooks().onClick(ctx) end)
