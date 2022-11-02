@@ -6,6 +6,7 @@ local _closeImg = hs.image.imageFromPath(hs.configdir .. "/lock.png")
 
 ---@class ui.preview.state
 ---@field id string
+---@field __joinedTo ui.preview.state[]
 local state = {}
 state.__index = state
 state.__name = 'state'
@@ -52,7 +53,13 @@ end
 
 ---@param other ui.preview.state
 function state:isMasterTo(other)
-    self.__joinedTo[other.id] = other
+    table.insert(self.__joinedTo, other)
+    if #self.__joinedTo == 1 then
+        self:companionOne(other:logo())
+    end
+    if #self.__joinedTo == 2 then
+        self:companionTwo(other:logo())
+    end
     other.__belongsTo = self
     return self
 end
@@ -71,7 +78,7 @@ function state:apply()
     return self
 end
 
----@param f boolean | nil
+---@param f boolean | ui.preview.state | nil
 ---@return boolean | ui.preview.state
 function state:locked(f)
     if f ~= nil then
@@ -122,7 +129,7 @@ function state:visible(f)
     return self._visible
 end
 
----@param f boolean | nil
+---@param f boolean | nil | ui.preview.state | ui.preview.window
 ---@return boolean | ui.preview.state
 function state:focused(f)
     if f ~= nil then
@@ -142,7 +149,7 @@ function state:lockerVisible(f)
     return self._lockerVisible
 end
 
----@param f hs.image | nil
+---@param f hs.image | ui.preview.state | nil
 ---@return hs.image | ui.preview.state
 function state:background(f)
     if f ~= nil then
@@ -161,6 +168,27 @@ function state:logo(f)
     end
     return self._logo
 end
+
+---@param f hs.image | nil | ui.preview.state
+---@return hs.image | ui.preview.state
+function state:companionOne(f)
+    if f ~= nil then
+        self._companionOne = f
+        return self
+    end
+    return self._companionOne
+end
+
+---@param f hs.image | nil | ui.preview.state
+---@return hs.image | ui.preview.state
+function state:companionTwo(f)
+    if f ~= nil then
+        self._companionTwo = f
+        return self
+    end
+    return self._companionTwo
+end
+
 
 ---@return table<string, fun()>
 function state:hooks()

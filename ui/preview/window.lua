@@ -48,7 +48,7 @@ function preview:previewEvents(w)
 end
 
 ---@param hook fun(isLocked: boolean) | nil
----@return fun(isLocked: boolean) | ui.preview.window
+---@return fun(isLocked: boolean) | ui.preview.window | ui.preview.state
 function preview:onLockedHook(hook)
     if hook ~= nil then
         self:state():hooks().onLock = hook
@@ -109,7 +109,7 @@ function preview:onDND(canvas, event, details)
 end
 
 ---@param previewArea hs.geometry
----@param index number
+---@param id number
 ---@param hub ui.preview.events.hub
 ---@return ui.preview.window | ui.preview.window
 function preview:new(id, hub, previewArea)
@@ -218,7 +218,26 @@ function preview:new(id, hub, previewArea)
             withShadow = true,
             padding = 5,
             antialias = true,
-
+        }, {
+            type = 'image',
+            action = 'fill',
+            image = o:rState():logo(),
+            imageAlignment = 'left',
+            imageAlpha = 0.5,
+            withShadow = true,
+            padding = 5,
+            antialias = true,
+            frame={x = '0%', y = '5%', w = '35%', h = '35%'},
+        }, {
+            type = 'image',
+            action = 'fill',
+            image = o:rState():logo(),
+            imageAlignment = 'left',
+            imageAlpha = 0.5,
+            withShadow = true,
+            padding = 5,
+            antialias = true,
+            frame = { x = '00%', y = '60%', w = '35%', h = '35%' },
         }):alpha(1.0)
         :clickActivating(false)
         :canvasMouseEvents(true, true, true, false)
@@ -233,21 +252,33 @@ function preview:new(id, hub, previewArea)
     return o
 end
 
+---@param remoteState ui.preview.state | ui.preview.window | nil | boolean
+---@return ui.preview.state | ui.preview.window
 function preview:apply(remoteState)
     if remoteState == nil then
         remoteState = self:state()
     end
     if self:rState():background() ~= remoteState:background() then
         self:canvas():elementAttribute(1, 'image', remoteState:background())
+        ---@diagnostic disable-next-line: undefined-field
         pcall(function() hs.image.__gc(remoteState:background()) end  )
         self:rState():background(remoteState:background())
-        ---@diagnostic disable-next-line: param-type-mismatch
     end
     if self:rState():logo() ~= remoteState:logo() then
         self:canvas():elementAttribute(4, 'image', remoteState:logo())
-        pcall(function() hs.image.__gc(remoteState:logo()) end  )
+        ---@diagnostic disable-next-line: undefined-field
     end
-    if  self:rState():locked() ~= remoteState:locked() or
+    if self:rState():companionOne() ~= remoteState:companionOne() then
+        self:canvas():elementAttribute(5, 'image', remoteState:companionOne())
+        self:rState():companionOne(remoteState:companionOne())
+    end
+
+    if self:rState():companionTwo() ~= remoteState:companionTwo() then
+        self:canvas():elementAttribute(6, 'image', remoteState:companionTwo())
+        self:rState():companionTwo(remoteState:companionTwo())
+    end
+
+    if self:rState():locked() ~= remoteState:locked() or
         self:rState():focused() ~= remoteState:focused()
     then
         local l = self:canvas():topLeft()

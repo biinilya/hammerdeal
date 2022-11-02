@@ -359,8 +359,8 @@ function observer:hook(name, fn)
     return self
 end
 
----@param h { [string]: fun() }
----@return { [string]: fun() }
+---@param h { [string]: fun(...) } | nil
+---@return { [string]: fun(...) }
 function observer:hooks(h)
     if h ~= nil then
         self.__hooks = h

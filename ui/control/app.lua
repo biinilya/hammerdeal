@@ -184,8 +184,18 @@ function app:enforceLayout(forceFront)
         autoLayout = currentLayout
     end
     if self.screen ~= nil and self.layout ~= nil then
-        local tileWindows = {self.hsApp:mainWindow()}
-        for _, joined in pairs(self.screen.__joinedTo) do
+        local tileWindows = {}
+        if self.hsApp:mainWindow() ~= nil then
+            table.insert(tileWindows, self.hsApp:mainWindow())
+        else
+            for _, win in ipairs(self.hsApp:allWindows()) do
+                if win:isStandard() then
+                    table.insert(tileWindows, win)
+                    break
+                end
+            end
+        end
+        for _, joined in ipairs(self.screen.__joinedTo) do
             for idx, window in ipairs(joined.__mainWindow) do
                 if window then
                     table.insert(tileWindows, window)
@@ -195,8 +205,10 @@ function app:enforceLayout(forceFront)
                 end
             end
         end
-        tileWindows[1]:focus()
-        tileWindows[1]:raise()
+        if #tileWindows > 0 then
+            tileWindows[1]:focus()
+            tileWindows[1]:raise()
+        end
         if #tileWindows == 1 then
             tileWindows[1]:setFrame(self.layout.workspace)
         elseif #tileWindows == 2 then
