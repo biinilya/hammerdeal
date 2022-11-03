@@ -204,7 +204,9 @@ function app:enforceLayout(forceFront)
             end
         end
         for _, window in ipairs(tileWindows) do
-            window:raise()
+            if forceFront then
+                window:raise()
+            end
         end
         if #tileWindows == 1 then
             tileWindows[1]:setFrame(self.layout.workspace)
