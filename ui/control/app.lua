@@ -71,6 +71,7 @@ function app:init(appName, layout, app)
         :background(ui.preview.thumbnailS(self.bundleID))
         :logo(ui.preview.logo(self.bundleID))
         :visible(true)
+    self.screen.__app = self
     if self.cfg:get('locked') then
         self.screen:locked(true)
     end
@@ -172,10 +173,7 @@ end
 
 function app:enforceLayout(forceFront)
     if self.screen.__belongsTo then
-        if self.state == 'focused' then
-            self.screen.__belongsTo:hooks()['onClick']()
-        end
-        self:changeStatusTo('started', self.hsApp)
+        self.screen.__belongsTo.__app:enforceLayout(forceFront)
         return
     end
     local currentLayout = hs.keycodes.currentLayout()
@@ -204,10 +202,6 @@ function app:enforceLayout(forceFront)
                     end
                 end
             end
-        end
-        if #tileWindows > 0 then
-            tileWindows[1]:focus()
-            tileWindows[1]:raise()
         end
         if #tileWindows == 1 then
             tileWindows[1]:setFrame(self.layout.workspace)
@@ -245,9 +239,8 @@ end
 function app:changeStatusTo(status, appObject)
     if self.screen.__belongsTo then
         self.layout:detach(self.name)
-        return
     end
-    
+
     local transition = string.format('%s->%s', self.state, status)
     if self.transitions[transition] then
         self.transitions[transition]()
