@@ -138,18 +138,18 @@ function broker:processWindowEvent(appName, eventType, windowObject)
         appObject = hs.application.get(appName)
     end
 
-    if eventType == hs.window.filter.windowRejected then
-        self:processAppEvent(appName, hs.application.watcher.deactivated, appObject):deregisterWindow(windowObject)
-        return
-    end
-
-    if eventType == hs.window.filter.windowAllowed then
-        self:processAppEvent(appName, hs.application.watcher.launched, appObject):registerWindow(windowObject)
-    end
-
-    if eventType == hs.window.filter.windowFocused then
-        self:processAppEvent(appName, hs.application.watcher.focused, appObject):focusWindow(windowObject)
-    end
+    local eventMap = {
+        [hs.window.filter.windowRejected] = hs.application.watcher.deactivated,
+        [hs.window.filter.windowAllowed] = hs.application.watcher.launched,
+        [hs.window.filter.windowFocused] = hs.application.watcher.focused,
+    }
+    local eventAction = {
+        [hs.window.filter.windowRejected] = ui.control.app.deregisterWindow,
+        [hs.window.filter.windowAllowed] = ui.control.app.registerWindow,
+        [hs.window.filter.windowFocused] = ui.control.app.focusWindow,
+    }
+    local app = self:processAppEvent(appName, eventMap[eventType], appObject)
+    if app then eventAction[eventType](app, windowObject) end
 end
 
 
