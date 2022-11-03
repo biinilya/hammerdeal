@@ -203,6 +203,9 @@ function app:enforceLayout(forceFront)
                 end
             end
         end
+        for _, window in ipairs(tileWindows) do
+            window:raise()
+        end
         if #tileWindows == 1 then
             tileWindows[1]:setFrame(self.layout.workspace)
         elseif #tileWindows == 2 then
@@ -225,6 +228,8 @@ function app:enforceLayout(forceFront)
             topRight.h = workspace.h / 2
             bottomRight.y = workspace.y + topRight.h
             bottomRight.h = workspace.h / 2
+            topRight.w = workspace.w / 2
+            bottomRight.w = workspace.w / 2
             tileWindows[1]:setFrame(left)
             tileWindows[2]:setFrame(topRight)
             tileWindows[3]:setFrame(bottomRight)

@@ -72,8 +72,12 @@ end
 
 
 function state:apply()
-    if self.__notifyCb ~= nil then
-        self.__notifyCb()
+    if self.__belongsTo then
+        self.__belongsTo:apply()
+    else
+        if self.__notifyCb then
+            self.__notifyCb()
+        end
     end
     return self
 end
@@ -136,7 +140,11 @@ function state:focused(f)
         self._focused = f
         return self
     end
-    return self._focused
+    local focused = self._focused
+    for _, adopted in ipairs(self.__joinedTo) do
+        focused = focused or adopted:focused()
+    end
+    return focused
 end
 
 ---@param f boolean | nil
