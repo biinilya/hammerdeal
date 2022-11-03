@@ -21,7 +21,7 @@ function broker:new()
     setmetatable(obj, broker)
     obj:enableHotkeys()
     obj.__units = {}
-    obj.__bbcWorld = hs.window.filter.new(nil, 'BB', 'warning'):rejectApp('Hammerspoon')
+    obj.__bbcWorld = hs.window.filter.new(nil, 'BB', 'warning'):rejectApp('Hammerspoon'):rejectApp('Finder')
     obj.__layout = ui.control.layout:new(8)
     obj.__bbcLife = hs.application.watcher.new(ui.fn.partial(obj.processAppEvent, obj))
     obj.__bbcNew = hs.window.filter.new(
@@ -31,6 +31,7 @@ function broker:new()
             if w:isMinimized() then return false end
             if w:isMaximizable() then return false end
             if w:subrole() == 'AXSystemDialog.Hammerspoon' then return true end
+            if w:application():title() == 'Finder' then return true end
 
             ---@type hs.geometry
             local size = w:frame()
@@ -99,7 +100,7 @@ end
 ---@param appObject hs.application
 ---@return ui.control.app | nil
 function broker:processAppEvent(appName, eventType, appObject)
-    local blockList = {['Hammerspoon']=true}
+    local blockList = {['Hammerspoon']=true, ['Finder']=true}
     if appName == nil or blockList[appName] then return nil end
     if eventType == hs.application.watcher.terminated then
         for name, app in pairs(self.__units) do
