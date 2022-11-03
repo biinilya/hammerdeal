@@ -22,7 +22,7 @@ end
 
 ---@class stateController
 ---@field elements table<string, hs.watchable>
----@field before hs.watchable
+---@field elementsPrivate table<string, hs.watchable>
 ---@field latest hs.watchable
 ---@field focused hs.watchable
 ---@field selected hs.watchable
@@ -50,7 +50,7 @@ function canvasController.new(pathMask)
     return o
 end
 
-function canvasController:repeatEvent(elementId, eventType)
+function canvasController:repeatEvent(elementId, eventType, overrideEventType)
     local element = self.elements[elementId]
     if element == nil then
         return
@@ -60,7 +60,7 @@ function canvasController:repeatEvent(elementId, eventType)
         return
     end
     local timer, canvas, elementId, x, y = table.unpack(event)
-    self:onMouseEvent(canvas, eventType, elementId, x, y)
+    self:onMouseEvent(canvas, overrideEventType or eventType, elementId, x, y)
 end
 
 ---@param canvas hs.canvas
@@ -111,16 +111,18 @@ function canvasController:onMouseEvent(canvas, eventType, elementId, x, y)
         self.selected = self.latest
         self.selected.isSelected = true
         self.selected.dropTarget = self.beingDragged
-        --if eventType == 'mouseUp' then
-        --    self.selected.linkRequested = action.new()
-        --end
-        if eventType == 'mouseDown' then
-            self.selected.linkRequested = { self.selected, self.beingDragged }
-            self.selected.isSelected = false
-            self.selected.dropTarget = false
-            self.beingDragged.isDragged = false
-            self.beingDragged = nil
-            self.selected = nil
+        if eventType == 'mouseDown' or eventType == 'mouseUp' then
+            self.selected.linkRequested = {
+                target = self.selected,
+                origin = self.beingDragged,
+                onComplete = function ()
+                    self.selected.isSelected = false
+                    self.selected.dropTarget = false
+                    self.beingDragged.isDragged = false
+                    self.beingDragged = nil
+                    self.selected = nil
+                end
+            }
         end
         return
     end
@@ -322,9 +324,10 @@ function hub:attach(elementIds)
                 end
             end
             if key == 'linkRequested' then
-                local dropTarget, dropEntity = table.unpack(new)
-                if dropTarget.id ~= dropEntity then
+                local dropTarget, dropEntity = new.target, new.origin
+                if dropTarget.id ~= dropEntity.id then
                     o:hooks()['onDropReceived'](self.ctx.localCtx[dropTarget.id], self.ctx.localCtx[dropEntity.id])
+                    new.onComplete()
                 end
             end
             if key == 'actionRequested' then
