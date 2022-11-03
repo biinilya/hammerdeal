@@ -317,7 +317,7 @@ function app:activate()
         ---@type hs.window
         w = window
         if focused == 2 then
-            break
+            break   
         end
     end
     if self.hsApp:isRunning() then
@@ -333,7 +333,8 @@ function app:activate()
         return
     end
     self:changeStatusTo('stopped', self.hsApp)
-    hs.application.open(self.hsApp:bundleID(), false, false)
+    self.windows = {}
+    self.hsApp = hs.application.open(self.hsApp:bundleID(), 5, 5)
     self.activateOnStart = true
 end
 
