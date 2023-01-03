@@ -211,7 +211,7 @@ function preview:new(id, hub, previewArea)
             type = 'image',
             action = 'fill',
             image = o:rState():logo(),
-            imageAlignment = 'right',
+            imageAlignment = 'left',
             imageAlpha = 0.7,
             withShadow = true,
             padding = 5,
@@ -280,20 +280,21 @@ function preview:apply(remoteState)
         self:rState():focused() ~= remoteState:focused()
     then
         local l = self:canvas():topLeft()
+        local w = ui.screen.w*0.16 - self:canvas():frame().w
         l.x = 0
-        if remoteState:locked() then l.x = 50 end
-        if remoteState:focused() then l.x = 100 end
+        if remoteState:locked() then l.x = w/2 end
+        if remoteState:focused() then l.x = w end
         self:canvas():topLeft(l)
         --self:canvas():elementAttribute(2, 'frame', self:canvas():elementBounds(1))
         self:rState():locked(remoteState:locked())
         self:rState():focused(remoteState:focused())
     end
-    if self:rState():highlighted() ~= remoteState:highlighted() then
-        self:canvas():elementAttribute(3, 'action', remoteState:highlighted() and 'stroke' or 'skip')
+    -- if self:rState():highlighted() ~= remoteState:highlighted() then
+        -- self:canvas():elementAttribute(3, 'action', remoteState:highlighted() and 'stroke' or 'skip')
         --self:canvas():elementAttribute(4, 'action', remoteState:highlighted() and 'fill' or 'skip')
         ---@diagnostic disable-next-line: param-type-mismatch
-        self:rState():highlighted(remoteState:highlighted())
-    end
+        -- self:rState():highlighted(remoteState:highlighted())
+    -- end
     if self:rState():visible() ~= remoteState:visible() then
         if remoteState:visible() then
             self:canvas():elementAttribute(1, 'action', 'fill')

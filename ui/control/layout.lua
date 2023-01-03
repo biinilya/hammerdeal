@@ -35,30 +35,30 @@ function layout:init(numCells)
     local frame = hs.geometry('[0,5,15,97]'):fromUnitRect(ui.screen)
 
     self.canvas = hs.canvas.new(frame)
-    :appendElements(
-        {
-            type = "image",
-            action = "fill",
-            image = hs.image.imageFromPath(hs.configdir .. '/bg.png'),
-            imageAlpha = 0.4,
-            imageScaling = 'scaleToFit',
-        }, {
-            type = "rectangle",
-            fillColor = { white = 0.1, alpha = 0.7 },
-            frame = { x = "0%", y = "0%", h = "100%", w = "100%" },
-            padding = 0,
-            fillGradient = "radial",
-            fillGradientAngle = 45,
-            fillGradientColors = {
-                { black = 0.1, alpha = 0.8 },
-                { black = 0.9, alpha = 0.5 },
-                { black = 0.5, alpha = 0.3 },
-                { black = 0.9, alpha = 0.5 },
-                { black = 0.1, alpha = 0.9 },
-            },
-            fillGradientCenter = { x = -1.0, y = -1.0 },
-        }
-    )
+    -- :appendElements(
+    --     {
+    --         type = "image",
+    --         action = "fill",
+    --         image = hs.image.imageFromPath(hs.configdir .. '/bg.png'),
+    --         imageAlpha = 0.4,
+    --         imageScaling = 'scaleToFit',
+    --     }, {
+    --         type = "rectangle",
+    --         fillColor = { white = 0.1, alpha = 0.7 },
+    --         frame = { x = "0%", y = "0%", h = "100%", w = "100%" },
+    --         padding = 0,
+    --         fillGradient = "radial",
+    --         fillGradientAngle = 45,
+    --         fillGradientColors = {
+    --             { black = 0.1, alpha = 0.8 },
+    --             { black = 0.9, alpha = 0.5 },
+    --             { black = 0.5, alpha = 0.3 },
+    --             { black = 0.9, alpha = 0.5 },
+    --             { black = 0.1, alpha = 0.9 },
+    --         },
+    --         fillGradientCenter = { x = -1.0, y = -1.0 },
+    --     }
+    -- )
     :behaviorAsLabels({
         "transient",
         "canJoinAllSpaces",

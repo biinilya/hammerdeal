@@ -59,39 +59,39 @@ function broker:start()
         if app:kind() == 1 then
             self:processAppEvent(app:title(), hs.application.watcher.launched, app)
             for _, w in ipairs(app:allWindows()) do
-                self:processWindowEvent(app:title(), hs.window.filter.windowAllowed, w)
+                -- self:processWindowEvent(app:title(), hs.window.filter.windowAllowed, w)
             end
         end
     end
 
-    self.__bbcWorld:subscribe({
-        hs.window.filter.windowFocused, hs.window.filter.windowUnfocused,
-        hs.window.filter.windowAllowed, hs.window.filter.windowRejected,
-    }, function(w, appName, event)
-        self:processWindowEvent(appName, event, w)
-    end)
+    -- self.__bbcWorld:subscribe({
+    --     hs.window.filter.windowFocused, hs.window.filter.windowUnfocused,
+    --     hs.window.filter.windowAllowed, hs.window.filter.windowRejected,
+    -- }, function(w, appName, event)
+    --     self:processWindowEvent(appName, event, w)
+    -- end)
 
-    local f = self.__layout.workspace:toUnitRect(ui.desktop):fromUnitRect(ui.screen)
-    local rect = {
-        math.ceil(f.x * 100 / ui.screen.w),
-        math.ceil(f.y * 100 / ui.screen.h),
-        math.ceil((f.x + f.w) * 100 / ui.screen.w),
-        math.ceil((f.y + f.h) * 100 / ui.screen.h)
-    }
+    -- local f = self.__layout.workspace:toUnitRect(ui.desktop):fromUnitRect(ui.screen)
+    -- local rect = {
+    --     math.ceil(f.x * 100 / ui.screen.w),
+    --     math.ceil(f.y * 100 / ui.screen.h),
+    --     math.ceil((f.x + f.w) * 100 / ui.screen.w),
+    --     math.ceil((f.y + f.h) * 100 / ui.screen.h)
+    -- }
 
-    local rule = string.format('mov 1 foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
-    local rule2 = string.format('mov all foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
-
-
-    hs.window.layout.new({
-        { self.__bbcNew, 'noaction' },
-        { self.__bbcWorld, rule .. '|' .. rule2 },
-    }, 'bbcworld', 'warning'):apply()
+    -- local rule = string.format('mov 1 foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
+    -- local rule2 = string.format('mov all foc [%d,%d,%d,%d] 0,0', table.unpack(rect))
 
 
-    self.__bbcWorld:subscribe({hs.window.filter.windowRejected}, function(w, appName, event)
-        self:onWindowClose(w, appName)
-    end, true)
+    -- hs.window.layout.new({
+    --     { self.__bbcNew, 'noaction' },
+    --     { self.__bbcWorld, rule .. '|' .. rule2 },
+    -- }, 'bbcworld', 'warning'):apply()
+
+
+    -- self.__bbcWorld:subscribe({hs.window.filter.windowRejected}, function(w, appName, event)
+    --     self:onWindowClose(w, appName)
+    -- end, true)
     return self
 end
 
