@@ -187,7 +187,7 @@ function app:enforceLayout(forceFront)
             table.insert(tileWindows, self.hsApp:mainWindow())
         else
             for _, win in ipairs(self.hsApp:allWindows()) do
-                if win:isStandard() then
+                if win:isStandard() and win:subrole() == "AXStandardWindow" then
                     table.insert(tileWindows, win)
                     break
                 end

@@ -122,6 +122,18 @@ function layout:cellSize()
 end
 
 function layout:reorder()
+
+    local window = hs.window.frontmostWindow()
+    local detachAll = false
+
+    if window and window:isFullScreen() then
+        detachAll = true
+    end
+
+    if window and window:subrole() == "AXUnknown" then
+        detachAll = true
+    end
+
     ---@param cfg ui.cfg
     local function fetureVec(cfg)
         local fatures = {}
@@ -143,7 +155,9 @@ function layout:reorder()
 
     local preOrdered = {}
     for _, connection in pairs(self.connections) do
-        table.insert(preOrdered, connection)
+        if not detachAll then
+            table.insert(preOrdered, connection)
+        end
     end
 
     table.sort(preOrdered, function(v1, v2)

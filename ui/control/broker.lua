@@ -31,6 +31,7 @@ function broker:new()
             if w:isMinimized() then return false end
             if w:isMaximizable() then return false end
             if w:subrole() == 'AXSystemDialog.Hammerspoon' then return true end
+            if w:subrole() == 'AXStandardWindow' then return true end
             if w:application():title() == 'Finder' then return true end
 
             ---@type hs.geometry
